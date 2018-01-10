@@ -4,9 +4,24 @@ import torch.nn.functional as F
 
 from modules.attention import AttentionModule
 
+__author__ = "prlz77, ISELAB, CVC-UAB"
+__date__ = "10/01/2018"
+
 
 class AttentionNet(nn.Module):
-    def __init__(self, attention_depth, attention_width, has_gates=False, reg_w=0.0):
+    """
+    A simple 5conv 2fc CNN with painless attention
+    """
+
+    def __init__(self, attention_depth, attention_width, has_gates=True, reg_w=0.0):
+        """
+
+        Args:
+            attention_depth: number of attention modules (starting by the last layer)
+            attention_width: number of attention heads in each attention module
+            has_gates: use gating (recommended)
+            reg_w: inter-head regularization weight
+        """
         super(AttentionNet, self).__init__()
         self.has_gates = has_gates
         self.orthogonal = reg_w
@@ -48,17 +63,32 @@ class AttentionNet(nn.Module):
         self.bn7 = nn.BatchNorm1d(256)
         self.fc2 = nn.Linear(256, 10)
         nn.init.kaiming_normal(self.fc2.weight.data)
-        self.g_out = nn.Linear(256, 1, bias=False)
-        self.g_bn = nn.BatchNorm1d(1)
+        # Gates for the output layer
+        if has_gates:
+            self.g_out = nn.Linear(256, 1, bias=False)
+            self.g_bn = nn.BatchNorm1d(1)
         nn.init.kaiming_normal(self.g_out.weight.data)
 
     def reg_loss(self):
+        """ Regularization loss
+
+        Returns: a Variable containing the total weighted inter-head regularization loss
+
+        """
         loss = 0
         for i in range(5, self.attention_depth, -1):
             loss += self.__getattr__("att%d" % i).reg_loss()
         return loss / self.attention_depth
 
     def forward(self, x):
+        """ Pytorch forward function
+
+        Args:
+            x: input images
+
+        Returns: log_softmax(logits)
+
+        """
         outputs = []
         gates = []
         x = self.bn1(x)

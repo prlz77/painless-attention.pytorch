@@ -1,6 +1,9 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+__author__ = "prlz77, ISELAB, CVC-UAB"
+__date__ = "10/01/2018"
+
 
 class Baseline(nn.Module):
     def __init__(self):
