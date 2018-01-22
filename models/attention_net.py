@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.attention import AttentionModule
+from modules.attention import AttentionModule, Gate
 
 __author__ = "prlz77, ISELAB, CVC-UAB"
 __date__ = "10/01/2018"
@@ -65,9 +65,7 @@ class AttentionNet(nn.Module):
         nn.init.kaiming_normal(self.fc2.weight.data)
         # Gates for the output layer
         if has_gates:
-            self.g_out = nn.Linear(256, 1, bias=False)
-            self.g_bn = nn.BatchNorm1d(1)
-        nn.init.kaiming_normal(self.g_out.weight.data)
+            self.g_out = Gate(256)
 
     def reg_loss(self):
         """ Regularization loss
@@ -89,45 +87,29 @@ class AttentionNet(nn.Module):
         Returns: log_softmax(logits)
 
         """
-        outputs = []
-        gates = []
         x = self.bn1(x)
         x = self.bn2(F.relu(F.max_pool2d(self.conv1(x), 2)))
         if self.attention_depth == 5:
-            out1, g1 = self.att1(x)
-            outputs.append(out1)
-            gates.append(g1)
+            self.att1(x)
         x = self.bn3(F.relu(F.max_pool2d(self.conv2(x), 2)))
         if self.attention_depth >= 4:
-            out2, g2 = self.att2(x)
-            outputs.append(out2)
-            gates.append(g2)
+            self.att2(x)
         x = self.bn4(F.relu(self.conv3(x)))
         if self.attention_depth >= 3:
-            out3, g3 = self.att3(x)
-            outputs.append(out3)
-            gates.append(g3)
+            self.att3(x)
         x = self.bn5(F.relu(self.conv4(x)))
         if self.attention_depth >= 2:
-            out4, g4 = self.att4(x)
-            outputs.append(out4)
-            gates.append(g4)
+            self.att4(x)
         x = self.bn6(F.relu(self.conv5(x)))
         if self.attention_depth >= 1:
-            out5, g5 = self.att5(x)
-            outputs.append(out5)
-            gates.append(g5)
+            self.att5(x)
         x = x.view(x.size(0), 128 * 4 ** 2)
         x = self.bn7(F.relu(self.fc1(x)))
         output = F.log_softmax(self.fc2(x), 1)
-        outputs.append(output.view(x.size(0), 1, 10))
-        output = torch.cat(outputs, 1)
+
         if self.has_gates:
-            g_out = F.tanh(self.g_bn(self.g_out(x)))
-            gates.append(g_out)
-            gates = torch.cat(gates, 1)
-            gates = F.softmax(gates, 1).view(x.size(0), -1, 1)
-            output = (output * gates).sum(1)
+            g_out = self.g_out(x)
         else:
-            output = output.mean(1)
-        return output
+            g_out = None
+
+        return AttentionModule.aggregate(output, g_out)

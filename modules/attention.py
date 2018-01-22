@@ -6,6 +6,33 @@ __author__ = "prlz77, ISELAB, CVC-UAB"
 __date__ = "10/01/2018"
 
 
+class Gate(torch.nn.Module):
+    """
+    Attention Gate. Weights Attention output by its importance.
+    """
+    def __init__(self, in_ch):
+        """ Constructor
+
+        Args:
+            in_ch: number of input channels.
+        """
+        super(Gate, self).__init__()
+        self.bn = torch.nn.BatchNorm1d(1)
+        self.gate = torch.nn.Linear(in_ch, 1, bias=False)
+        torch.nn.init.kaiming_normal(self.gate.weight.data)
+
+    def forward(self, x):
+        """ Pytorch forward function
+
+        Args:
+            x: input Variable
+
+        Returns: gate value (Variable)
+
+        """
+        return F.tanh(self.bn(self.gate(x)))
+
+
 class OutputHead(torch.nn.Module):
     """ Output Head
 
@@ -36,9 +63,7 @@ class OutputHead(torch.nn.Module):
         torch.nn.init.kaiming_normal(self.out.weight.data)
 
         if has_gates:
-            self.gate = torch.nn.Linear(in_ch, 1, bias=False)
-            self.bn_gate = torch.nn.BatchNorm1d(1)
-            torch.nn.init.kaiming_normal(self.gate.weight.data)
+            self.gate = Gate(self.in_ch)
 
     def forward(self, x):
         """ Pytorch Forward
@@ -50,7 +75,7 @@ class OutputHead(torch.nn.Module):
 
         """
         x = self.bn(F.relu(self.F(x.contiguous().view(x.size(0), -1))))
-        return self.out(x), F.tanh(self.bn_gate(self.gate(x))) if self.has_gates else None
+        return self.out(x), self.gate(x) if self.has_gates else None
 
 
 class AttentionHead(torch.nn.Module):
@@ -106,6 +131,8 @@ class AttentionModule(torch.nn.Module):
 
     Applies different attention masks with the Attention Heads and ouputs classification hypotheses.
     """
+    out_buffer = []
+    gate_buffer = []
 
     def __init__(self, in_ch, h, w, nlabels, nheads=1, has_gates=True, reg_w=0.0):
         """ Constructor
@@ -123,7 +150,7 @@ class AttentionModule(torch.nn.Module):
         self.nlabels = nlabels
         self.nheads = nheads
         self.has_gates = has_gates
-        self.atthead = AttentionHead(in_ch, nheads, has_gates)
+        self.atthead = AttentionHead(in_ch, nheads)
         self.reg_w = reg_w
         for i in range(self.nheads):
             self.__setattr__('outhead_%d' % i, OutputHead(in_ch, h, w, nlabels, has_gates))
@@ -160,11 +187,37 @@ class AttentionModule(torch.nn.Module):
             output.append(out.view(b, 1, self.nlabels))
             if self.has_gates:
                 gates.append(g.view(b, 1))
-        output = torch.cat(output, 1)
 
+        AttentionModule.out_buffer += output
         if self.has_gates:
-            gates = torch.cat(gates, 1)
-
-        output = F.log_softmax(output, dim=2)
+            AttentionModule.gate_buffer += gates
 
         return output, gates
+
+    @staticmethod
+    def aggregate(last_output, last_gate=None):
+        """ Generates the final output after aggregating all the attention modules.
+
+        Args:
+            last_output: network output
+            last_gate: gate for the network output
+
+        Returns: final network prediction
+
+        """
+        AttentionModule.out_buffer.append(last_output.view(last_output.size(0), 1, -1))
+        outputs = torch.cat(AttentionModule.out_buffer, 1)
+        outputs = F.log_softmax(outputs, dim=2)
+        if last_gate is not None:
+            gates = AttentionModule.gate_buffer
+            gates.append(last_gate)
+            gates = torch.cat(gates, 1)
+            gates = F.softmax(gates, 1).view(gates.size(0), -1, 1)
+            ret = (outputs * gates).sum(1)
+        else:
+            ret = outputs.mean(1)
+
+        AttentionModule.out_buffer = []
+        AttentionModule.gate_buffer = []
+
+        return ret

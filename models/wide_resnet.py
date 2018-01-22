@@ -73,24 +73,25 @@ class Group(nn.Module):
         return self.layer(x)
 
 class WideResNet(nn.Module):
-    def __init__(self):
+    def __init__(self, pretrain_path='pretrained/wrn-50-2.t7'):
         super(WideResNet, self).__init__()
 
-        if not os.path.isfile('pretrained/wrn-50-2.t7'):
+        if not os.path.isfile(pretrain_path):
             raise IOError("""wrn-50-2.t7 pre-trained model not found. 
             Please, download it from: https://yadi.sk/d/-8AWymOPyVZns and
             copy it into pretrained/wrn-50-2.t7""")
 
-        loaded = load_lua('pretrained/wrn-50-2.t7')
+        loaded = load_lua(pretrain_path)
         self.conv1 = conv_layer(loaded.modules[0])
         self.bn1 = bn_layer(loaded.modules[1])
         self.group0 = Group(loaded.modules[4])
         self.group1 = Group(loaded.modules[5])
         self.group2 = Group(loaded.modules[6])
         self.group3 = Group(loaded.modules[7])
-        #self.linear = linear_layer(loaded.modules[10])
+        self.linear = linear_layer(loaded.modules[10])
 
     def finetune(self, nlabels):
+        self.nlabels = nlabels
         self.linear = nn.Linear(2048, nlabels)
         init.kaiming_normal(self.linear.weight.data)
         return self
@@ -125,17 +126,13 @@ if __name__ == '__main__':
     import pylab
     import cv2
     import numpy as np
-    cat = pylab.imread('/home/prlz77/Escritorio/bald-eagle.jpg')/255.
+    cat = pylab.imread('demo/goldfish.jpeg')/255.
     cat = cv2.resize(cat, (224,224))
     cat = cat.transpose(2,0,1)
     cat -= np.array([0.485, 0.456, 0.406]).reshape((3,1,1))
     cat /= np.array([0.229, 0.224, 0.225]).reshape((3,1,1))
     cat = torch.Tensor(cat[None,...])
     out = net(Variable(cat))
-    torch_im = load_lua('/home/prlz77/image.t7')
-    torch_pred = load_lua('/home/prlz77/output.t7')
-    print((out.data - torch_pred).abs().max())
-
-    max, ind = torch.max(out, 1)
+    max, ind = torch.max(net.linear(out), 1)
     # print(max)
     print(ind)
