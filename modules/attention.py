@@ -131,8 +131,6 @@ class AttentionModule(torch.nn.Module):
 
     Applies different attention masks with the Attention Heads and ouputs classification hypotheses.
     """
-    out_buffer = []
-    gate_buffer = []
 
     def __init__(self, in_ch, h, w, nlabels, nheads=1, has_gates=True, reg_w=0.0):
         """ Constructor
@@ -188,14 +186,14 @@ class AttentionModule(torch.nn.Module):
             if self.has_gates:
                 gates.append(g.view(b, 1))
 
-        AttentionModule.out_buffer += output
-        if self.has_gates:
-            AttentionModule.gate_buffer += gates
+        # AttentionModule.out_buffer += output
+        # if self.has_gates:
+        #     AttentionModule.gate_buffer += gates
 
         return output, gates
 
     @staticmethod
-    def aggregate(last_output, last_gate=None):
+    def aggregate(outputs, gates, last_output, last_gate=None):
         """ Generates the final output after aggregating all the attention modules.
 
         Args:
@@ -205,19 +203,15 @@ class AttentionModule(torch.nn.Module):
         Returns: final network prediction
 
         """
-        AttentionModule.out_buffer.append(last_output.view(last_output.size(0), 1, -1))
-        outputs = torch.cat(AttentionModule.out_buffer, 1)
+        outputs.append(last_output.view(last_output.size(0), 1, -1))
+        outputs = torch.cat(outputs, 1)
         outputs = F.log_softmax(outputs, dim=2)
         if last_gate is not None:
-            gates = AttentionModule.gate_buffer
             gates.append(last_gate)
             gates = torch.cat(gates, 1)
             gates = F.softmax(gates, 1).view(gates.size(0), -1, 1)
             ret = (outputs * gates).sum(1)
         else:
             ret = outputs.mean(1)
-
-        AttentionModule.out_buffer = []
-        AttentionModule.gate_buffer = []
 
         return ret
