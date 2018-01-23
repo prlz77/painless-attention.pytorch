@@ -71,28 +71,24 @@ class WideResNetAttention(WideResNet):
     def __init__(self, nlabels, attention_depth=0, nheads=1, has_gates=True, reg_w=0.0, pretrain_path="pretrained/wrn-50-2.t7"):
         super(WideResNetAttention, self).__init__(pretrain_path)
         self.attention_outputs = []
+        self.attention_depth = attention_depth
         self.has_gates = has_gates
         for i in range(attention_depth):
-            group = self.__getattr__("group%d" %(3-i))
-            att = AttentionModule(int(1024 / (2**i)), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
-            self.__setattr__("att_%d" %(3-i), att)
+            att = AttentionModule(int(2048 / (2**i)), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
+            self.__setattr__("att%d" %(3-i), att)
 
         if self.has_gates:
             self.output_gate = Gate(2048)
 
         # self.finetune(nlabels)
 
-    def get_base_params(self):
-        params = []
-        params += list(self.conv1.parameters())
-        params += list(self.bn1.parameters())
-        params += list(self.group0.parameters())
-        params += list(self.group1.parameters())
-        params += list(self.group2.parameters())
-        params += list(self.group3.parameters())
-        return params
-
     def get_classifier_params(self):
+        params = []
+        for i in range(self.attention_depth):
+            params.append(self.__getattr__("att%i" %(3-i)).parameters())
+        if self.has_gates:
+            params.append(self.output_gate.parameters())
+
         return self.linear.parameters()
 
     def forward(self, x):
@@ -101,10 +97,16 @@ class WideResNetAttention(WideResNet):
         x = self.bn1(x)
         x = F.relu(x)
         x = F.max_pool2d(x, 3, 2, 1)
-        x = self.group0(x)
-        x = self.group1(x)
-        x = self.group2(x)
-        x = self.group3(x)
+        outputs = []
+        gates = []
+        for i in range(4):
+            group = self.__getattr__("group%d" %i)
+            x = group(x)
+            if self.attention_depth > (3 - i):
+                o, g = self.__getattr__("att%d" % i)(x)
+                outputs += o
+                if self.has_gates:
+                    gates += g
         x = x.view(x.size(0), x.size(1), -1)
         x = x.mean(2).view(x.size(0), x.size(1))
         last_output = self.linear(x)
@@ -113,7 +115,7 @@ class WideResNetAttention(WideResNet):
         else:
             last_gate = None
 
-        return AttentionModule.aggregate(last_output, last_gate)
+        return AttentionModule.aggregate(outputs, gates, last_output, last_gate)
 
 if __name__ == '__main__':
     import time
