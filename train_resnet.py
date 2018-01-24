@@ -35,7 +35,7 @@ def main(args):
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
     train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size,
-                                               shuffle=True, pin_memory=True, num_workers=args.num_workers)
+                                               shuffle=True, pin_memory=False, num_workers=args.num_workers)
     dataset = ImageList(args.root_folder, args.val_listfile,
                         transform=transforms.Compose([
                             transforms.Resize(256),
@@ -44,7 +44,7 @@ def main(args):
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
     val_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False,
-                                             pin_memory=True, num_workers=args.num_workers)
+                                             pin_memory=False, num_workers=args.num_workers)
 
     if args.attention_depth == 0:
         from models.wide_resnet import WideResNet
