@@ -145,13 +145,16 @@ class AttentionModule(torch.nn.Module):
             reg_w: inter-mask regularization weight
         """
         super(AttentionModule, self).__init__()
+        self.conv_reduce = torch.nn.Conv2d(in_ch, in_ch // 2, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_bn = torch.nn.BatchNorm2d(in_ch // 2)
+        self.in_ch = in_ch // 2
         self.nlabels = nlabels
         self.nheads = nheads
         self.has_gates = has_gates
-        self.atthead = AttentionHead(in_ch, nheads)
+        self.atthead = AttentionHead(self.in_ch, nheads)
         self.reg_w = reg_w
         for i in range(self.nheads):
-            self.__setattr__('outhead_%d' % i, OutputHead(in_ch, h, w, nlabels, has_gates))
+            self.__setattr__('outhead_%d' % i, OutputHead(self.in_ch, h, w, nlabels, has_gates))
 
     def reg_loss(self):
         """ Regularization loss
@@ -170,6 +173,7 @@ class AttentionModule(torch.nn.Module):
         Returns: tuple with predictions and gates. Gets are set to None if disabled.
 
         """
+        x = self.conv_bn(self.conv_reduce(x))
         b, c, h, w = x.size()
         atthead = self.atthead(x).view(b, self.nheads, c, h, w)
 

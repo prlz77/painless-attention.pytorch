@@ -89,20 +89,32 @@ class AttentionNet(nn.Module):
         """
         x = self.bn1(x)
         x = self.bn2(F.relu(F.max_pool2d(self.conv1(x), 2)))
+        outputs = []
+        gates = []
         if self.attention_depth == 5:
-            self.att1(x)
+            o, g = self.att1(x)
+            outputs += o
+            gates += g
         x = self.bn3(F.relu(F.max_pool2d(self.conv2(x), 2)))
         if self.attention_depth >= 4:
-            self.att2(x)
+            o, g = self.att2(x)
+            outputs += o
+            gates += g
         x = self.bn4(F.relu(self.conv3(x)))
         if self.attention_depth >= 3:
-            self.att3(x)
+            o, g = self.att3(x)
+            outputs += o
+            gates += g
         x = self.bn5(F.relu(self.conv4(x)))
         if self.attention_depth >= 2:
-            self.att4(x)
+            o, g = self.att4(x)
+            outputs += o
+            gates += g
         x = self.bn6(F.relu(self.conv5(x)))
         if self.attention_depth >= 1:
-            self.att5(x)
+            o, g = self.att5(x)
+            outputs += o
+            gates += g
         x = x.view(x.size(0), 128 * 4 ** 2)
         x = self.bn7(F.relu(self.fc1(x)))
         output = F.log_softmax(self.fc2(x), 1)
@@ -112,4 +124,4 @@ class AttentionNet(nn.Module):
         else:
             g_out = None
 
-        return AttentionModule.aggregate(output, g_out)
+        return AttentionModule.aggregate(outputs, gates, output, g_out)
