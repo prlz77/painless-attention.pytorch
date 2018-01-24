@@ -73,6 +73,8 @@ class WideResNetAttention(WideResNet):
         self.attention_outputs = []
         self.attention_depth = attention_depth
         self.has_gates = has_gates
+        self.reg_w = reg_w
+
         for i in range(attention_depth):
             att = AttentionModule(int(2048 / (2**i)), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
             self.__setattr__("att%d" %(3-i), att)
@@ -90,6 +92,13 @@ class WideResNetAttention(WideResNet):
             params.append(self.output_gate.parameters())
 
         return self.linear.parameters()
+
+
+    def reg_loss(self):
+        loss = 0
+        for i in range(self.attention_depth):
+            loss += self.__getattr__("att%i" %(3-i)).reg_loss()
+        return loss / self.attention_depth
 
     def forward(self, x):
         self.attention_outputs = []
@@ -115,7 +124,12 @@ class WideResNetAttention(WideResNet):
         else:
             last_gate = None
 
-        return AttentionModule.aggregate(outputs, gates, last_output, last_gate)
+        if self.reg_w > 0:
+            reg_loss = self.reg_loss()
+        else:
+            reg_loss = 0
+
+        return AttentionModule.aggregate(outputs, gates, last_output, last_gate), reg_loss
 
 if __name__ == '__main__':
     import time

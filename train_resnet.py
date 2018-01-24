@@ -76,10 +76,13 @@ def main(args):
             data, label = torch.autograd.Variable(data, requires_grad=False).cuda(async=True), \
                           torch.autograd.Variable(label, requires_grad=False).cuda()
             optimizer.zero_grad()
+            if args.attention_depth > 0:
+                output, loss = model(data)
+            else:
+                loss = 0
+                output = model(data)
             output = model(data)
-            loss = F.nll_loss(output, label)
-            if args.reg_weight > 0:
-                loss += model.reg_loss()
+            loss += F.nll_loss(output, label)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
