@@ -78,11 +78,12 @@ def main(args):
             optimizer.zero_grad()
             if args.attention_depth > 0:
                 output, loss = model(data)
+                if args.ngpu > 1 and args.reg_weight > 0:
+                    loss = loss.mean()
             else:
                 loss = 0
                 output = model(data)
             loss += F.nll_loss(output, label)
-            print(loss)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
