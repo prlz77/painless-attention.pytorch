@@ -82,6 +82,7 @@ def main(args):
                 loss = 0
                 output = model(data)
             loss += F.nll_loss(output, label)
+            print(loss)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
