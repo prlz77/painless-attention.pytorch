@@ -95,7 +95,11 @@ def main(args):
         for data, label in val_loader:
             data, label = torch.autograd.Variable(data, volatile=True).cuda(async=True), \
                           torch.autograd.Variable(label, volatile=True).cuda()
-            output = model(data)
+            if args.attention_depth > 0:
+                output, loss = model(data)
+            else:
+                loss = 0
+                output = model(data)
             loss = F.nll_loss(output, label)
             val_loss_meter.update(loss.data[0], data.size(0))
             preds = output.max(1)[1]
