@@ -48,10 +48,10 @@ def main(args):
 
     if args.attention_depth == 0:
         from models.wide_resnet import WideResNet
-        net = WideResNet().finetune(args.nlabels).cuda()
+        model = WideResNet().finetune(args.nlabels).cuda()
     else:
         from models.wide_resnet_attention import WideResNetAttention
-        net = WideResNetAttention(args.nlabels, args.attention_depth, args.attention_width, args.has_gates,
+        model = WideResNetAttention(args.nlabels, args.attention_depth, args.attention_width, args.has_gates,
                                   args.reg_weight).finetune(args.nlabels).cuda()
 
     # if args.load != "":
@@ -63,9 +63,7 @@ def main(args):
                           lr=args.lr, weight_decay=5e-4, momentum=0.9, nesterov=True)
 
     if args.ngpu > 1:
-        model = torch.nn.DataParallel(net, range(args.ngpu))
-    else:
-        model = net
+        model = torch.nn.DataParallel(model, range(args.ngpu))
 
     def train():
         """
@@ -100,7 +98,6 @@ def main(args):
             if args.attention_depth > 0:
                 output, loss = model(data)
             else:
-                loss = 0
                 output = model(data)
             loss = F.nll_loss(output, label)
             val_loss_meter.update(loss.data[0], data.size(0))
