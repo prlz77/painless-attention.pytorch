@@ -81,7 +81,6 @@ def main(args):
             else:
                 loss = 0
                 output = model(data)
-            output = model(data)
             loss += F.nll_loss(output, label)
             loss.backward()
             optimizer.step()
