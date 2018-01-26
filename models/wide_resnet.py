@@ -118,8 +118,7 @@ class WideResNet(nn.Module):
         x = self.group1(x)
         x = self.group2(x)
         x = self.group3(x)
-        x = x.view(x.size(0), x.size(1), -1)
-        return F.log_softmax(self.linear(x.mean(2).view(x.size(0), x.size(1))), dim=1)
+        return F.log_softmax(self.linear(x.mean(3).mean(2)), dim=1)
 
 if __name__ == '__main__':
     net = WideResNet().eval()
