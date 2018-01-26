@@ -91,7 +91,7 @@ class WideResNetAttention(WideResNet):
         if self.has_gates:
             params.append(self.output_gate.parameters())
 
-        return self.linear.parameters()
+        return params + [self.linear.parameters()]
 
 
     def reg_loss(self):
