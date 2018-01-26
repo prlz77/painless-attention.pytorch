@@ -68,9 +68,6 @@ def main(args):
         model = model.cuda()
         criterion = torch.nn.NLLLoss().cuda()
 
-    while True:
-        pass
-
     def train():
         """
 
@@ -116,7 +113,7 @@ def main(args):
 
     best_accuracy = 0
     for epoch in range(args.epochs):
-        train()
+        #train()
         val()
         if state['val_accuracy'] > best_accuracy:
             best_accuracy = state['val_accuracy']
