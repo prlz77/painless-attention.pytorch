@@ -87,11 +87,11 @@ class WideResNetAttention(WideResNet):
     def get_classifier_params(self):
         params = []
         for i in range(self.attention_depth):
-            params.append(self.__getattr__("att%i" %(3-i)).parameters())
+            params += list(self.__getattr__("att%i" %(3-i)).parameters())
         if self.has_gates:
-            params.append(self.output_gate.parameters())
+            params += list(self.output_gate.parameters())
 
-        return params + [self.linear.parameters()]
+        return params + list(self.linear.parameters())
 
 
     def reg_loss(self):
