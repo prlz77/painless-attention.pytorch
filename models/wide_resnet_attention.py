@@ -10,7 +10,7 @@ class WideResNetAttention(WideResNet):
         self.reg_w = reg_w
 
         for i in range(attention_depth):
-            att = AttentionModule(int(2048 / (2**i)), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
+            att = AttentionModule(2048 // (2**i), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
             self.__setattr__("att%d" %(3-i), att)
 
         if self.has_gates:
@@ -50,8 +50,7 @@ class WideResNetAttention(WideResNet):
                 outputs += o
                 if self.has_gates:
                     gates += g
-        x = x.view(x.size(0), x.size(1), -1)
-        x = x.mean(2).view(x.size(0), x.size(1))
+        x = x.mean(3).mean(2)
         last_output = self.linear(x)
         if self.has_gates:
             last_gate = self.output_gate(x)
