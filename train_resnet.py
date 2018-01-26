@@ -89,6 +89,7 @@ def main(args):
                 loss = 0
                 output = model(data)
             print(loss)
+            print(output)
             loss += criterion(output, label)
             loss.backward()
             optimizer.step()
