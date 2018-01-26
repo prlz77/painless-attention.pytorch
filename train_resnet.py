@@ -88,9 +88,7 @@ def main(args):
             else:
                 loss = 0
                 output = model(data)
-            print(loss)
-            print(output)
-            loss += criterion(output, label)
+            loss = criterion(output, label)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
