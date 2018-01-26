@@ -27,23 +27,23 @@ def main(args):
     imagenet_mean = [0.485, 0.456, 0.406]
     imagenet_std = [0.229, 0.224, 0.225]
 
-    dataset = ImageList(args.root_folder, args.train_listfile,
+    train_dataset = ImageList(args.root_folder, args.train_listfile,
                         transform=transforms.Compose([
                             transforms.Resize(256),
                             transforms.RandomCrop(224),
                             transforms.ToTensor(),
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size,
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                shuffle=True, pin_memory=False, num_workers=args.num_workers)
-    dataset = ImageList(args.root_folder, args.val_listfile,
+    val_dataset = ImageList(args.root_folder, args.val_listfile,
                         transform=transforms.Compose([
                             transforms.Resize(256),
                             transforms.CenterCrop(224),
                             transforms.ToTensor(),
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
-    val_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False,
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                              pin_memory=False, num_workers=args.num_workers)
 
     if args.attention_depth == 0:
@@ -52,7 +52,7 @@ def main(args):
     else:
         from models.wide_resnet_attention import WideResNetAttention
         model = WideResNetAttention(args.nlabels, args.attention_depth, args.attention_width, args.has_gates,
-                                  args.reg_weight).finetune(args.nlabels).cuda()
+                                  args.reg_weight).finetune(args.nlabels)
 
     # if args.load != "":
     #     net.load_state_dict(torch.load(args.load), strict=False)
@@ -63,7 +63,12 @@ def main(args):
                           lr=args.lr, weight_decay=5e-4, momentum=0.9, nesterov=True)
 
     if args.ngpu > 1:
-        model = torch.nn.DataParallel(model, range(args.ngpu))
+        model = torch.nn.DataParallel(model, range(args.ngpu)).cuda()
+        criterion = torch.nn.DataParallel(torch.nn.NLLLoss())
+    else:
+        model = model.cuda()
+        criterion = torch.nn.NLLLoss()
+
 
     def train():
         """
@@ -81,7 +86,7 @@ def main(args):
             else:
                 loss = 0
                 output = model(data)
-            loss += F.nll_loss(output, label)
+            loss += criterion(output, label)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
@@ -99,7 +104,7 @@ def main(args):
                 output, loss = model(data)
             else:
                 output = model(data)
-            loss = F.nll_loss(output, label)
+            loss = criterion(output, label)
             val_loss_meter.update(loss.data[0], data.size(0))
             preds = output.max(1)[1]
             val_accuracy_meter.update((preds == label).float().sum().data[0], data.size(0))
