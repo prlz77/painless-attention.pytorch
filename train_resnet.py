@@ -81,7 +81,10 @@ def main(args):
             optimizer.zero_grad()
             if args.attention_depth > 0:
                 output, loss = model(data)
-                loss = loss.mean()
+                if args.reg_weight > 0:
+                    loss = loss.mean()
+                else:
+                    loss = 0
             else:
                 loss = 0
                 output = model(data)
