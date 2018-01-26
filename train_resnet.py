@@ -64,10 +64,10 @@ def main(args):
 
     if args.ngpu > 1:
         model = torch.nn.DataParallel(model, range(args.ngpu)).cuda()
-        criterion = torch.nn.DataParallel(torch.nn.NLLLoss())
+        criterion = torch.nn.DataParallel(torch.nn.NLLLoss()).cuda()
     else:
         model = model.cuda()
-        criterion = torch.nn.NLLLoss()
+        criterion = torch.nn.NLLLoss().cuda()
 
 
     def train():
@@ -88,7 +88,7 @@ def main(args):
             else:
                 loss = 0
                 output = model(data)
-            loss = criterion(output, label)
+            loss += criterion(output, label)
             loss.backward()
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
