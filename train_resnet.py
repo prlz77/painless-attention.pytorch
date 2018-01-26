@@ -107,6 +107,7 @@ def main(args):
             else:
                 output = model(data)
             loss = criterion(output, label)
+            print(loss)
             val_loss_meter.update(loss.data[0], data.size(0))
             preds = output.max(1)[1]
             val_accuracy_meter.update((preds == label).float().sum().data[0], data.size(0))
