@@ -9,12 +9,15 @@ from datasets.listfile import ImageList
 from opts import parser
 from prlz77_utils.loggers.json_logger import JsonLogger
 from prlz77_utils.monitors.meter import Meter
+from prlz77_utils.monitors.harakiri import Harakiri
 
 __author__ = "prlz77, ISELAB, CVC-UAB"
 __date__ = "10/01/2018"
 
 
 def main(args):
+    harakiri = Harakiri()
+    harakiri.set_max_plateau(20)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -112,13 +115,21 @@ def main(args):
         state['val_accuracy'] = val_accuracy_meter.mean()
 
     best_accuracy = 0
+    counter = 0
     for epoch in range(args.epochs):
         train()
         val()
+        harakiri.update(epoch, state['val_accuracy'])
         if state['val_accuracy'] > best_accuracy:
+            counter = 0
             best_accuracy = state['val_accuracy']
             if args.save:
                 torch.save(model.state_dict(), os.path.join(state["exp_dir"], "model.pytorch"))
+        else:
+            counter += 1
+        if counter == 10:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= 0.5
         state['epoch'] = epoch + 1
         log.update(state)
         print(state)
