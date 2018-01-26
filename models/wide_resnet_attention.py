@@ -127,7 +127,7 @@ class WideResNetAttention(WideResNet):
         if self.reg_w > 0:
             reg_loss = self.reg_loss()
         else:
-            reg_loss = 0
+            reg_loss = torch.autograd.Variable(torch.Tensor([0]))
 
         return AttentionModule.aggregate(outputs, gates, last_output, last_gate), reg_loss
 
