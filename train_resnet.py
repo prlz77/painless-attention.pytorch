@@ -25,6 +25,7 @@ def main(args):
     log.update(args.__dict__)
     state = args.__dict__
     state['exp_dir'] = os.path.dirname(log.path)
+    state['start_lr'] = state['lr']
     print(state)
 
     imagenet_mean = [0.485, 0.456, 0.406]
@@ -34,6 +35,7 @@ def main(args):
                         transform=transforms.Compose([
                             transforms.Resize(256),
                             transforms.RandomCrop(224),
+                            transforms.RandomHorizontalFlip(),
                             transforms.ToTensor(),
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
@@ -130,12 +132,11 @@ def main(args):
         if counter == 10:
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.5
+            state['lr'] *= 0.5
         state['epoch'] = epoch + 1
         log.update(state)
         print(state)
-        if (epoch + 1) in args.schedule:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.1
+
 
 
 if __name__ == "__main__":
