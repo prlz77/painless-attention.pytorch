@@ -129,13 +129,13 @@ def main(args):
                 torch.save(model.state_dict(), os.path.join(state["exp_dir"], "model.pytorch"))
         else:
             counter += 1
-        if counter == 10:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.5
-            state['lr'] *= 0.5
         state['epoch'] = epoch + 1
         log.update(state)
         print(state)
+        if (epoch + 1) in args.schedule:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= 0.1
+            state['lr'] *= 0.1
 
 
 
