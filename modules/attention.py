@@ -121,7 +121,7 @@ class AttentionHead(torch.nn.Module):
 
         """
         b, c, h, w = x.size()
-        self.att_mask = F.softmax(self.conv(x).view(b, self.nheads * w * h), 1).view(b, self.nheads, h, w)
+        self.att_mask = F.softmax(self.conv(x).view(b, self.nheads, w * h), 2).view(b, self.nheads, h, w)
         xatt_mask = x.view(b, 1, c, h, w) * self.att_mask.view(b, self.nheads, 1, h, w)
         return self.bn(xatt_mask.view(b * self.nheads, c, h * w))
 
