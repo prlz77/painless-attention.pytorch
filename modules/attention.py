@@ -10,7 +10,7 @@ class Gate(torch.nn.Module):
     """
     Attention Gate. Weights Attention output by its importance.
     """
-    def __init__(self, in_ch):
+    def __init__(self, in_ch, ngates=1):
         """ Constructor
 
         Args:
@@ -18,8 +18,8 @@ class Gate(torch.nn.Module):
         """
         super(Gate, self).__init__()
         self.bn = torch.nn.BatchNorm1d(1)
-        self.gate = torch.nn.Linear(in_ch, 1, bias=False)
-        torch.nn.init.kaiming_normal(self.gate.weight.data)
+        self.gates = torch.nn.Linear(in_ch, ngates, bias=False)
+        torch.nn.init.kaiming_normal(self.gates.weight.data)
 
     def forward(self, x):
         """ Pytorch forward function
@@ -30,52 +30,7 @@ class Gate(torch.nn.Module):
         Returns: gate value (Variable)
 
         """
-        return F.tanh(self.bn(self.gate(x)))
-
-
-class OutputHead(torch.nn.Module):
-    """ Output Head
-
-    Generates classification hypotheses from the Attention Heads
-    """
-
-    def __init__(self, in_ch, h, w, nlabels, has_gates):
-        """ Constructor
-
-        Args:
-            in_ch: Number of Input Channels
-            h: Input height
-            w: Input width
-            nlabels: Number of classes
-            has_gates: whether to use gating
-        """
-        super(OutputHead, self).__init__()
-        self.in_ch = in_ch
-        self.h = h
-        self.w = w
-        self.nlabels = nlabels
-        self.has_gates = has_gates
-
-        self.F = torch.nn.Linear(in_ch * h * w, in_ch, bias=False)
-        torch.nn.init.kaiming_normal(self.F.weight.data)
-        self.bn = torch.nn.BatchNorm1d(in_ch)
-        self.out = torch.nn.Linear(in_ch, nlabels)
-        torch.nn.init.kaiming_normal(self.out.weight.data)
-
-        if has_gates:
-            self.gate = Gate(self.in_ch)
-
-    def forward(self, x):
-        """ Pytorch Forward
-
-        Args:
-            x: input data
-
-        Returns: tuple with predictions and gates. Gets are set to None if disabled.
-
-        """
-        x = self.bn(F.relu(self.F(x.contiguous().view(x.size(0), -1))))
-        return self.out(x), self.gate(x) if self.has_gates else None
+        return F.tanh(self.bn(self.gates(x)))
 
 
 class AttentionHead(torch.nn.Module):
@@ -132,7 +87,7 @@ class AttentionModule(torch.nn.Module):
     Applies different attention masks with the Attention Heads and ouputs classification hypotheses.
     """
 
-    def __init__(self, in_ch, h, w, nlabels, nheads=1, has_gates=True, reg_w=0.0):
+    def __init__(self, in_ch, h, w, nlabels, nheads=1, reg_w=0.0):
         """ Constructor
 
         Args:
@@ -145,16 +100,13 @@ class AttentionModule(torch.nn.Module):
             reg_w: inter-mask regularization weight
         """
         super(AttentionModule, self).__init__()
-        self.conv_reduce = torch.nn.Conv2d(in_ch, in_ch // 2, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv_bn = torch.nn.BatchNorm2d(in_ch // 2)
-        self.in_ch = in_ch // 2
+        self.in_ch = in_ch
         self.nlabels = nlabels
         self.nheads = nheads
-        self.has_gates = has_gates
-        self.atthead = AttentionHead(self.in_ch, nheads)
         self.reg_w = reg_w
-        for i in range(self.nheads):
-            self.__setattr__('outhead_%d' % i, OutputHead(self.in_ch, h, w, nlabels, has_gates))
+        self.att_head = torch.nn.Conv2d(in_ch, nheads, kernel_size=3, stride=1, padding=1, bias=False)
+        self.out_head = torch.nn.Conv2d(in_ch, nlabels, kernel_size=3, stride=1, padding=1, bias=False)
+
 
     def reg_loss(self):
         """ Regularization loss
@@ -173,28 +125,10 @@ class AttentionModule(torch.nn.Module):
         Returns: tuple with predictions and gates. Gets are set to None if disabled.
 
         """
-        x = self.conv_bn(self.conv_reduce(x))
-        b, c, h, w = x.size()
-        atthead = self.atthead(x).view(b, self.nheads, c, h, w)
-
-        output = []
-        if self.has_gates:
-            gates = []
-        else:
-            gates = None
-
-        for i in range(self.nheads):
-            outhead = self.__getattr__("outhead_%d" % i)
-            out, g = outhead(atthead[:, i, ...])
-            output.append(out.view(b, 1, self.nlabels))
-            if self.has_gates:
-                gates.append(g.view(b, 1))
-
-        # AttentionModule.out_buffer += output
-        # if self.has_gates:
-        #     AttentionModule.gate_buffer += gates
-
-        return output, gates
+        att_mask = F.softmax(self.att_head(x).view(x.size(0), self.nheads, 1, x.size(2) * x.size(3)), 3)
+        output = self.out_head(x)
+        output = (output.view(x.size(0), 1, x.size(1), x.size(2)*x.size(3)) * att_mask).sum(3)
+        return output
 
     @staticmethod
     def aggregate(outputs, gates, last_output, last_gate=None):
