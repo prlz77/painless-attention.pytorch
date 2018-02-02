@@ -17,7 +17,7 @@ class Gate(torch.nn.Module):
             in_ch: number of input channels.
         """
         super(Gate, self).__init__()
-        self.bn = torch.nn.BatchNorm1d(1)
+        self.bn = torch.nn.BatchNorm1d(ngates)
         self.gates = torch.nn.Linear(in_ch, ngates, bias=False)
         torch.nn.init.kaiming_normal(self.gates.weight.data)
 
@@ -94,7 +94,6 @@ class OutHead(torch.nn.Module):
         super(OutHead, self).__init__()
         self.conv = torch.nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False)
         torch.nn.init.kaiming_normal(self.conv.weight.data)
-        self.bn = torch.nn.BatchNorm2d(out_ch)
 
     def forward(self, x):
         """ Pytorch Forward
@@ -105,7 +104,7 @@ class OutHead(torch.nn.Module):
         Returns: the multiple attended feature maps
 
         """
-        return self.bn(self.conv(x))
+        return self.conv(x)
 
 class AttentionModule(torch.nn.Module):
     """ Attention Module
@@ -113,7 +112,7 @@ class AttentionModule(torch.nn.Module):
     Applies different attention masks with the Attention Heads and ouputs classification hypotheses.
     """
 
-    def __init__(self, in_ch, h, w, nlabels, nheads=1, reg_w=0.0):
+    def __init__(self, in_ch, nlabels, nheads=1, reg_w=0.0):
         """ Constructor
 
         Args:
@@ -141,7 +140,7 @@ class AttentionModule(torch.nn.Module):
         Returns: A Variable with the inter-mask regularization loss for this  Attention Module.
 
         """
-        return self.atthead.reg_loss() * self.reg_w
+        return self.att_head.reg_loss() * self.reg_w
 
     def forward(self, x):
         """ Pytorch Forward
@@ -154,12 +153,11 @@ class AttentionModule(torch.nn.Module):
         """
         b, c, h, w = x.size()
         att_mask = self.att_head(x)
-        output = self.out_head(x.view(b, 1, c, h, w)) * att_mask.view(b, self.nheads, 1, h, w)
-        output = (output.view(x.size(0), 1, x.size(1), x.size(2)*x.size(3)) * att_mask).sum(3)
-        return output
+        output = self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask.view(b, self.nheads, 1, h*w)
+        return output.sum(3)
 
     @staticmethod
-    def aggregate(outputs, gates, last_output, last_gate=None):
+    def aggregate(outputs, gates):
         """ Generates the final output after aggregating all the attention modules.
 
         Args:
@@ -169,12 +167,9 @@ class AttentionModule(torch.nn.Module):
         Returns: final network prediction
 
         """
-        outputs.append(last_output.view(last_output.size(0), 1, -1))
         outputs = torch.cat(outputs, 1)
         outputs = F.log_softmax(outputs, dim=2)
-        if last_gate is not None:
-            gates.append(last_gate)
-            gates = torch.cat(gates, 1)
+        if gates is not None:
             gates = F.softmax(gates, 1).view(gates.size(0), -1, 1)
             ret = (outputs * gates).sum(1)
         else:

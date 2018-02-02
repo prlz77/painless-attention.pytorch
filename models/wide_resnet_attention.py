@@ -10,11 +10,11 @@ class WideResNetAttention(WideResNet):
         self.reg_w = reg_w
 
         for i in range(attention_depth):
-            att = AttentionModule(2048 // (2**i), int(7 * 2**i), int(7*2**i), nlabels, nheads, has_gates, reg_w)
+            att = AttentionModule(2048 // (2**i), nlabels, nheads, reg_w)
             self.__setattr__("att%d" %(3-i), att)
 
         if self.has_gates:
-            self.output_gate = Gate(2048)
+            self.output_gate = Gate(2048, self.attention_depth*nheads)
 
         # self.finetune(nlabels)
 
@@ -41,28 +41,24 @@ class WideResNetAttention(WideResNet):
         x = F.relu(x)
         x = F.max_pool2d(x, 3, 2, 1)
         outputs = []
-        gates = []
         for i in range(4):
             group = self.__getattr__("group%d" %i)
             x = group(x)
             if self.attention_depth > (3 - i):
-                o, g = self.__getattr__("att%d" % i)(x)
-                outputs += o
-                if self.has_gates:
-                    gates += g
+                outputs.append(self.__getattr__("att%d" % i)(x))
         x = x.mean(3).mean(2)
-        last_output = self.linear(x)
+        outputs.append(self.linear(x).view(x.size(0), 1, -1))
         if self.has_gates:
-            last_gate = self.output_gate(x)
+            gates = self.output_gate(x)
         else:
-            last_gate = None
+            gates = None
 
         if self.reg_w > 0:
             reg_loss = self.reg_loss()
         else:
             reg_loss = None
 
-        return AttentionModule.aggregate(outputs, gates, last_output, last_gate), reg_loss
+        return AttentionModule.aggregate(outputs, gates), reg_loss
 
 if __name__ == '__main__':
     import time
