@@ -14,7 +14,7 @@ class WideResNetAttention(WideResNet):
             self.__setattr__("att%d" %(3-i), att)
 
         if self.has_gates:
-            self.output_gate = Gate(2048, self.attention_depth*nheads)
+            self.output_gate = Gate(2048, self.attention_depth*nheads + 1)
 
         # self.finetune(nlabels)
 
@@ -49,7 +49,7 @@ class WideResNetAttention(WideResNet):
         x = x.mean(3).mean(2)
         outputs.append(self.linear(x).view(x.size(0), 1, -1))
         if self.has_gates:
-            gates = self.output_gate(x)
+            gates = self.output_gate(x).view(x.size(0))
         else:
             gates = None
 
