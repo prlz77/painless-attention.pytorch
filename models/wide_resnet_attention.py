@@ -49,7 +49,7 @@ class WideResNetAttention(WideResNet):
         x = x.mean(3).mean(2)
         outputs.append(self.linear(x).view(x.size(0), 1, -1))
         if self.has_gates:
-            gates = self.output_gate(x).view(x.size(0))
+            gates = self.output_gate(x)
         else:
             gates = None
 
