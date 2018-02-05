@@ -17,8 +17,10 @@ class Gate(torch.nn.Module):
             in_ch: number of input channels.
         """
         super(Gate, self).__init__()
-        self.bn = torch.nn.BatchNorm1d(ngates)
-        self.gates = torch.nn.Linear(in_ch, ngates, bias=False)
+        self.bn = torch.nn.BatchNorm1d(ngates*2)
+        self.bn2 = torch.nn.BatchNorm1d(ngates)
+        self.gates1 = torch.nn.Linear(in_ch, ngates * 2, bias=False)
+        self.gates2 = torch.nn.Linear(ngates * 2, ngates, bias=False)
         torch.nn.init.kaiming_normal(self.gates.weight.data)
 
     def forward(self, x):
@@ -30,7 +32,7 @@ class Gate(torch.nn.Module):
         Returns: gate value (Variable)
 
         """
-        return F.tanh(self.bn(self.gates(x)))
+        return F.tanh(self.bn2(self.gates2(self.bn1(F.relu(self.gates1(x))))))
 
 
 class AttentionHead(torch.nn.Module):
