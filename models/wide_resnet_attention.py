@@ -58,7 +58,7 @@ class WideResNetAttention(WideResNet):
             reg_loss = None
 
         low_level_output = AttentionModule.aggregate(outputs, gates), reg_loss
-        high_level_output = F.log_softmax(self.linear(x).view(x.size(0), 1, -1))
+        high_level_output = F.log_softmax(self.linear(x))
         return (low_level_output + high_level_output) / 2
 
 if __name__ == '__main__':
