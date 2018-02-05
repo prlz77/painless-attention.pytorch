@@ -71,7 +71,6 @@ def main(args):
         model = torch.nn.DataParallel(model, range(args.ngpu)).cuda()
     else:
         model = model.cuda()
-        criterion = torch.nn.NLLLoss().cuda()
 
     def train():
         """

@@ -10,8 +10,8 @@ class WideResNetAttention(WideResNet):
         self.reg_w = reg_w
 
         for i in range(attention_depth):
-            att = AttentionModule(2048 // (2**i), nlabels, nheads, reg_w)
-            self.__setattr__("att%d" %(3-i), att)
+            att = AttentionModule(2048 // (2**(i+1)), nlabels, nheads, reg_w)
+            self.__setattr__("att%d" %(2-i), att)
 
         if self.has_gates:
             self.output_gate = Gate(2048, self.attention_depth*nheads + 1)
@@ -21,7 +21,7 @@ class WideResNetAttention(WideResNet):
     def get_classifier_params(self):
         params = []
         for i in range(self.attention_depth):
-            params += list(self.__getattr__("att%i" %(3-i)).parameters())
+            params += list(self.__getattr__("att%i" %(2-i)).parameters())
         if self.has_gates:
             params += list(self.output_gate.parameters())
 
@@ -44,7 +44,7 @@ class WideResNetAttention(WideResNet):
         for i in range(4):
             group = self.__getattr__("group%d" %i)
             x = group(x)
-            if self.attention_depth > (3 - i):
+            if i > (2 - self.attention_depth) and i <= 2:
                 outputs.append(self.__getattr__("att%d" % i)(x))
         x = x.mean(3).mean(2)
         outputs.append(self.linear(x).view(x.size(0), 1, -1))
