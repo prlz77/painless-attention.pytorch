@@ -63,9 +63,9 @@ def main(args):
     #     net.load_state_dict(torch.load(args.load), strict=False)
     #     net = net.cuda()
 
-    optimizer = optim.SGD([{'params': model.get_base_params(), 'lr': args.lr * 0.0},
+    optimizer = optim.SGD([{'params': model.get_base_params(), 'lr': args.lr * 0.1},
                            {'params': model.get_classifier_params()}],
-                          lr=args.lr, weight_decay=5e-4, momentum=0.9, nesterov=True)
+                          lr=args.lr, weight_decay=1e-4, momentum=0.9, nesterov=True)
 
     if args.ngpu > 1:
         model = torch.nn.DataParallel(model, range(args.ngpu)).cuda()
