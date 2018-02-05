@@ -14,7 +14,7 @@ class WideResNetAttention(WideResNet):
             self.__setattr__("att%d" %(2-i), att)
 
         if self.has_gates:
-            self.output_gate = Gate(2048, self.attention_depth*nheads + 1)
+            self.output_gate = Gate(2048, self.attention_depth*nheads)
 
         # self.finetune(nlabels)
 
@@ -47,7 +47,6 @@ class WideResNetAttention(WideResNet):
             if i > (2 - self.attention_depth) and i <= 2:
                 outputs.append(self.__getattr__("att%d" % i)(x))
         x = x.mean(3).mean(2)
-        outputs.append(self.linear(x).view(x.size(0), 1, -1))
         if self.has_gates:
             gates = self.output_gate(x)
         else:
@@ -58,7 +57,9 @@ class WideResNetAttention(WideResNet):
         else:
             reg_loss = None
 
-        return AttentionModule.aggregate(outputs, gates), reg_loss
+        low_level_output = AttentionModule.aggregate(outputs, gates), reg_loss
+        high_level_output = F.log_softmax(self.linear(x).view(x.size(0), 1, -1))
+        return (low_level_output + high_level_output) / 2
 
 if __name__ == '__main__':
     import time
