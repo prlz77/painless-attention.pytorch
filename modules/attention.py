@@ -17,7 +17,7 @@ class Gate(torch.nn.Module):
             in_ch: number of input channels.
         """
         super(Gate, self).__init__()
-        self.bn = torch.nn.BatchNorm1d(ngates*2)
+        self.bn1 = torch.nn.BatchNorm1d(ngates*2)
         self.bn2 = torch.nn.BatchNorm1d(ngates)
         self.gates1 = torch.nn.Linear(in_ch, ngates * 2, bias=False)
         self.gates2 = torch.nn.Linear(ngates * 2, ngates, bias=False)
