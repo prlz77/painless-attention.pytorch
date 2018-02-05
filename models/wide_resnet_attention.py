@@ -31,7 +31,7 @@ class WideResNetAttention(WideResNet):
     def reg_loss(self):
         loss = 0
         for i in range(self.attention_depth):
-            loss += self.__getattr__("att%i" %(3-i)).reg_loss()
+            loss += self.__getattr__("att%i" %(2-i)).reg_loss()
         return loss / self.attention_depth
 
     def forward(self, x):
