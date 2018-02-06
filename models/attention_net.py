@@ -65,7 +65,7 @@ class AttentionNet(nn.Module):
         nn.init.kaiming_normal(self.fc2.weight.data)
         # Gates for the output layer
         if has_gates:
-            self.gates = Gate(256, self.attention_depth * self.attention_width + 1)
+            self.gates = Gate(256, self.attention_depth * self.attention_width)
 
     def reg_loss(self):
         """ Regularization loss
@@ -106,11 +106,10 @@ class AttentionNet(nn.Module):
             outputs.append(self.att5(x))
         x = x.view(x.size(0), 128 * 4 ** 2)
         x = self.bn7(F.relu(self.fc1(x)))
-        outputs.append(self.fc2(x).view(x.size(0), 1, -1))
 
         if self.has_gates:
             gates = self.gates(x)
         else:
             gates = None
 
-        return AttentionModule.aggregate(outputs, gates)
+        return (AttentionModule.aggregate(outputs, gates) + F.log_softmax(self.fc2(x), dim=1)) / 2.

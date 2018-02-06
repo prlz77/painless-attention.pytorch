@@ -63,7 +63,7 @@ def main(args):
     #     net.load_state_dict(torch.load(args.load), strict=False)
     #     net = net.cuda()
 
-    optimizer = optim.SGD([{'params': model.get_base_params(), 'lr': args.lr},
+    optimizer = optim.SGD([{'params': model.get_base_params(), 'lr': args.lr * 0.1},
                            {'params': model.get_classifier_params()}],
                           lr=args.lr, weight_decay=1e-4, momentum=0.9, nesterov=True)
 
@@ -132,9 +132,9 @@ def main(args):
         log.update(state)
         print(state)
         if (epoch + 1) in args.schedule:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.1
             state['lr'] *= 0.1
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = state['lr']
 
 
 
