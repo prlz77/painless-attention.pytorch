@@ -94,6 +94,7 @@ def main(args):
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
         state['train_loss'] = train_loss_meter.mean()
+        train_loss_meter.reset()
 
     def val():
         """
@@ -110,6 +111,8 @@ def main(args):
             val_accuracy_meter.update((preds == label).float().sum().data[0], data.size(0))
         state['val_loss'] = val_loss_meter.mean()
         state['val_accuracy'] = val_accuracy_meter.mean()
+        val_loss_meter.reset()
+        val_accuracy_meter.reset()
 
     def test():
         """

@@ -95,6 +95,7 @@ def main(args):
             optimizer.step()
             train_loss_meter.update(loss.data[0], data.size(0))
         state['train_loss'] = train_loss_meter.mean()
+        train_loss_meter.reset()
 
     def val():
         """
@@ -114,6 +115,8 @@ def main(args):
             val_accuracy_meter.update((preds == label).float().sum().data[0], data.size(0))
         state['val_loss'] = val_loss_meter.mean()
         state['val_accuracy'] = val_accuracy_meter.mean()
+        val_loss_meter.reset()
+        val_accuracy_meter.reset()
 
     best_accuracy = 0
     counter = 0
@@ -132,9 +135,9 @@ def main(args):
         log.update(state)
         print(state)
         if (epoch + 1) in args.schedule:
-            state['lr'] *= 0.1
             for param_group in optimizer.param_groups:
-                param_group['lr'] = state['lr']
+                param_group['lr'] *= 0.1
+            state['lr'] *= 0.1
 
 
 
