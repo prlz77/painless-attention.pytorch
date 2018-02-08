@@ -135,6 +135,7 @@ class AttentionModule(torch.nn.Module):
 
         self.att_head = AttentionHead(in_ch, nheads)
         self.out_head = OutHead(in_ch, nlabels*nheads)
+        self.score = OutHead(in_ch, nheads)
 
 
     def reg_loss(self):
@@ -155,9 +156,12 @@ class AttentionModule(torch.nn.Module):
 
         """
         b, c, h, w = x.size()
-        att_mask = self.att_head(x)
-        output = self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask.view(b, self.nheads, 1, h*w)
-        return output.sum(3)
+        att_mask = self.att_head(x).view(b, self.nheads, 1, h*w)
+        output = self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask
+        scores = self.score(x).view(b, self.nheads, 1, h*w)
+        scores = (scores * att_mask).sum(3)
+        scores = F.softmax(F.tanh(scores), 1)
+        return (output.sum(3) * scores).sum(1, keepdim=True)
 
     @staticmethod
     def aggregate(outputs, gates):
