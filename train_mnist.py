@@ -45,7 +45,7 @@ def main(args):
         val_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=False,
                                                  pin_memory=True, num_workers=args.num_workers)
     elif args.train_distractors > 0:
-        train_dataset = NpyDataset(os.path.join(args.mnist_path, 'train_%d.npy' % args.test_distractors))
+        train_dataset = NpyDataset(os.path.join(args.mnist_path, 'train_%d.npy' % args.train_distractors))
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                    shuffle=True, pin_memory=True, num_workers=args.num_workers)
         val_dataset = NpyDataset(os.path.join(args.mnist_path, 'valid_%d.npy' % args.train_distractors))
