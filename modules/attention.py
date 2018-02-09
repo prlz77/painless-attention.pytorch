@@ -10,19 +10,25 @@ class Gate(torch.nn.Module):
     """
     Attention Gate. Weights Attention output by its importance.
     """
-    def __init__(self, in_ch, ngates=1):
+    def __init__(self, in_ch, ngates=1, gate_depth=1):
         """ Constructor
 
         Args:
             in_ch: number of input channels.
         """
         super(Gate, self).__init__()
-        self.bn = torch.nn.BatchNorm1d(ngates)
-        self.gates = torch.nn.Linear(in_ch // 2, ngates, bias=False)
-        self.pre_gates = torch.nn.Linear(in_ch, in_ch // 2, bias=False)
-        torch.nn.init.kaiming_normal(self.pre_gates.weight.data)
-        self.pre_bn = torch.nn.BatchNorm1d(in_ch // 2)
+        if gate_depth == 1:
+            self.gates = torch.nn.Linear(in_ch, ngates, bias=False)
+        else:
+            self.gates = torch.nn.Linear(in_ch // 2, ngates, bias=False)
+            self.pre_gates = torch.nn.Linear(in_ch, in_ch // 2, bias=False)
+            torch.nn.init.kaiming_normal(self.pre_gates.weight.data)
+            self.pre_bn = torch.nn.BatchNorm1d(in_ch // 2)
+
         torch.nn.init.kaiming_normal(self.gates.weight.data)
+        self.bn = torch.nn.BatchNorm1d(ngates)
+
+        self.gate_depth = gate_depth
 
     def forward(self, x):
         """ Pytorch forward function
@@ -33,7 +39,10 @@ class Gate(torch.nn.Module):
         Returns: gate value (Variable)
 
         """
-        return F.tanh(self.bn(self.gates(self.pre_bn(F.relu(self.pre_gates(x))))))
+        if self.gate_depth == 1:
+            return F.tanh(self.bn(self.gates(x)))
+        else:
+            return F.tanh(self.bn(self.gates(self.pre_bn(F.relu(self.pre_gates(x))))))
 
 
 class AttentionHead(torch.nn.Module):
@@ -115,7 +124,7 @@ class AttentionModule(torch.nn.Module):
     Applies different attention masks with the Attention Heads and ouputs classification hypotheses.
     """
 
-    def __init__(self, in_ch, nlabels, nheads=1, reg_w=0.0):
+    def __init__(self, in_ch, nlabels, nheads=1, reg_w=0.0, self_attention=True):
         """ Constructor
 
         Args:
@@ -132,10 +141,12 @@ class AttentionModule(torch.nn.Module):
         self.nlabels = nlabels
         self.nheads = nheads
         self.reg_w = reg_w
+        self.self_attention = self_attention
 
         self.att_head = AttentionHead(in_ch, nheads)
         self.out_head = OutHead(in_ch, nlabels*nheads)
-        self.score = OutHead(in_ch, nheads)
+        if self.self_attention:
+            self.score = OutHead(in_ch, nheads)
 
 
     def reg_loss(self):
@@ -157,11 +168,14 @@ class AttentionModule(torch.nn.Module):
         """
         b, c, h, w = x.size()
         att_mask = self.att_head(x).view(b, self.nheads, 1, h*w)
-        output = self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask
-        scores = self.score(x).view(b, self.nheads, 1, h*w)
-        scores = (scores * att_mask).sum(3)
-        scores = F.softmax(F.tanh(scores), 1)
-        return (output.sum(3) * scores).sum(1, keepdim=True)
+        output = (self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask).sum(3)
+        if self.self_attention:
+            scores = self.score(x).view(b, self.nheads, 1, h*w)
+            scores = (scores * att_mask).sum(3)
+            scores = F.softmax(F.tanh(scores), 1)
+            return (output * scores).sum(1, keepdim=True)
+        else:
+            return output
 
     @staticmethod
     def aggregate(outputs, gates):

@@ -64,7 +64,7 @@ def main(args):
         baseline = Baseline().cuda()
         model = torch.nn.Sequential(stn, baseline)
     else:
-        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w).cuda()
+        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w, args.gate_depth, args.self_attention, args.attention_output).cuda()
 
     if args.load != "":
         model.load_state_dict(torch.load(args.load), strict=False)
@@ -154,6 +154,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mnist_path', type=str, help="mnist dataset path")
     parser.add_argument('--att_depth', type=int, default=1, help="attention depth")
+    parser.add_argument('--gate_depth', type=int, default=1, help="size of the gate predictor")
+    parser.add_argument('--self_attention', action='store_true', help="include self attention mechanisms")
+    parser.add_argument('--attention_output', action='store_true', help="perform attention on last output")
     parser.add_argument('--batch_size', type=int, default=100, help="batch size")
     parser.add_argument('--epochs', '-e', type=int, default=100, help="number of training epochs")
     parser.add_argument('--has_gates', '-g', action="store_true", help="use attention gates")
