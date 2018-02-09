@@ -13,7 +13,7 @@ class AttentionNet(nn.Module):
     A simple 5conv 2fc CNN with painless attention
     """
 
-    def __init__(self, attention_depth, attention_width, has_gates=True, reg_w=0.0, gate_depth=1, self_attention=True, attention_output=False):
+    def __init__(self, attention_depth, attention_width, has_gates=True, reg_w=0.0, gate_depth=1, self_attention=True, attention_output='all', attention_type='softmax'):
         """
 
         Args:
@@ -30,6 +30,7 @@ class AttentionNet(nn.Module):
         self.gate_depth = gate_depth
         self.self_attention = self_attention
         self.attention_output = attention_output
+        self.attention_type = attention_type
         self.bn1 = nn.BatchNorm2d(1)
         self.conv1 = nn.Conv2d(1, 32, 5, bias=False)  # 40 -> 18
         nn.init.kaiming_normal(self.conv1.weight.data)
@@ -71,8 +72,11 @@ class AttentionNet(nn.Module):
             ngates = self.attention_depth
             if not self.self_attention:
                 ngates *= self.attention_width
-            if self.attention_output:
+            if self.attention_output == 'all':
                 ngates += 1
+            elif self.attention_output == 'gate':
+                self.final_gate = nn.Linear(256, 1)
+                nn.init.kaiming_normal(self.final_gate.weight.data)
 
             self.gates = Gate(256, ngates, gate_depth=gate_depth)
 
@@ -121,8 +125,13 @@ class AttentionNet(nn.Module):
         else:
             gates = None
 
-        if self.attention_output:
+        if self.attention_output == 'all':
             outputs.append(self.fc2(x).view(x.size(0), 1, -1))
-            return AttentionModule.aggregate(outputs, gates)
+            return AttentionModule.aggregate(outputs, gates, self.attention_type)
+        elif self.attention_output == '50':
+            return (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.fc2(x), dim=1)) / 2.
+        elif self.attention_output == 'gate':
+            g = F.sigmoid(self.final_gate(x))
+            return g * AttentionModule.aggregate(outputs, gates, self.attention_type) + (1-g) * F.log_softmax(self.fc2(x), dim=1)
         else:
-            return (AttentionModule.aggregate(outputs, gates) + F.log_softmax(self.fc2(x), dim=1)) / 2.
+            raise ValueError(self.attention_output)

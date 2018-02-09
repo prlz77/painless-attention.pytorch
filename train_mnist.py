@@ -12,12 +12,15 @@ from models.baseline import Baseline
 from modules.stn import STN
 from prlz77_utils.loggers.json_logger import JsonLogger
 from prlz77_utils.monitors.meter import Meter
+from prlz77_utils.monitors.harakiri import Harakiri
 
 __author__ = "prlz77, ISELAB, CVC-UAB"
 __date__ = "10/01/2018"
 
 
 def main(args):
+    harakiri = Harakiri()
+    harakiri.set_max_plateau(20)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -64,7 +67,7 @@ def main(args):
         baseline = Baseline().cuda()
         model = torch.nn.Sequential(stn, baseline)
     else:
-        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w, args.gate_depth, args.self_attention, args.attention_output).cuda()
+        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w, args.gate_depth, args.self_attention, args.attention_output, args.attention_type).cuda()
 
     if args.load != "":
         model.load_state_dict(torch.load(args.load), strict=False)
@@ -146,6 +149,7 @@ def main(args):
             if (epoch + 1) in args.schedule:
                 for param_group in optimizer.param_groups:
                     param_group['lr'] *= 0.1
+            harakiri.update(epoch, state['val_accuracy'])
         if args.save:
             torch.save(model.state_dict(), os.path.join(state["exp_dir"], "model.pytorch"))
 
@@ -153,10 +157,11 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mnist_path', type=str, help="mnist dataset path")
+    parser.add_argument('--attention_type', type=str, default='softmax', help='attention function')
     parser.add_argument('--att_depth', type=int, default=1, help="attention depth")
     parser.add_argument('--gate_depth', type=int, default=1, help="size of the gate predictor")
     parser.add_argument('--self_attention', action='store_true', help="include self attention mechanisms")
-    parser.add_argument('--attention_output', action='store_true', help="perform attention on last output")
+    parser.add_argument('--attention_output', type=str, default='all', help="perform attention on last output")
     parser.add_argument('--batch_size', type=int, default=100, help="batch size")
     parser.add_argument('--epochs', '-e', type=int, default=100, help="number of training epochs")
     parser.add_argument('--has_gates', '-g', action="store_true", help="use attention gates")

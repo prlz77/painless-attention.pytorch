@@ -178,7 +178,7 @@ class AttentionModule(torch.nn.Module):
             return output
 
     @staticmethod
-    def aggregate(outputs, gates):
+    def aggregate(outputs, gates, function='softmax'):
         """ Generates the final output after aggregating all the attention modules.
 
         Args:
@@ -191,8 +191,12 @@ class AttentionModule(torch.nn.Module):
         outputs = torch.cat(outputs, 1)
         outputs = F.log_softmax(outputs, dim=2)
         if gates is not None:
-            gates = F.softmax(gates, 1).view(gates.size(0), -1, 1)
-            ret = (outputs * gates).sum(1)
+            if function == 'softmax':
+                gates = F.softmax(gates, 1).view(gates.size(0), -1, 1)
+                ret = (outputs * gates).sum(1)
+            else:
+                gates = F.sigmoid(gates).view(gates.size(0), -1, 1)
+                ret = (outputs * gates).sum(1) / (1e-6 + gates.sum(1))
         else:
             ret = outputs.mean(1)
 
