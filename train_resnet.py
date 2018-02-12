@@ -16,8 +16,8 @@ __date__ = "10/01/2018"
 
 
 def main(args):
-    harakiri = Harakiri()
-    harakiri.set_max_plateau(30)
+    # harakiri = Harakiri()
+    # harakiri.set_max_plateau(30)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -123,7 +123,7 @@ def main(args):
     for epoch in range(args.epochs):
         train()
         val()
-        harakiri.update(epoch, state['val_accuracy'])
+        # harakiri.update(epoch, state['val_accuracy'])
         if state['val_accuracy'] > best_accuracy:
             counter = 0
             best_accuracy = state['val_accuracy']
