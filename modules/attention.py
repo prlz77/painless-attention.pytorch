@@ -75,7 +75,7 @@ class AttentionHead(torch.nn.Module):
         mask2loss = self.att_mask.view(self.att_mask.size(0), self.nheads, -1)
         reg_loss = torch.bmm(mask2loss, mask2loss.transpose(1, 2)) * torch.autograd.Variable(self.diag,
                                                                                              requires_grad=False)
-        return (reg_loss.view(reg_loss.size(0), -1) ** 2).mean(1).mean(0)
+        return (reg_loss.view(-1) ** 2).mean()
 
     def forward(self, x):
         """ Pytorch Forward

@@ -2,20 +2,25 @@ from models.wide_resnet import *
 from modules.attention import AttentionModule, Gate
 
 class WideResNetAttention(WideResNet):
-    def __init__(self, nlabels, attention_depth=0, nheads=1, has_gates=True, reg_w=0.0, pretrain_path="pretrained/wrn-50-2.t7"):
+    def __init__(self, nlabels, attention_depth=0, nheads=1, has_gates=True, reg_w=0.0, pretrain_path="pretrained/wrn-50-2.t7", attention_output='all', attention_type='softmax'):
         super(WideResNetAttention, self).__init__(pretrain_path)
         self.attention_outputs = []
         self.attention_depth = attention_depth
         self.has_gates = has_gates
         self.reg_w = reg_w
+        self.attention_output = attention_output
+        self.attention_type = attention_type
 
         for i in range(attention_depth):
             att = AttentionModule(2048 // (2**(i+1)), nlabels, nheads, reg_w)
             self.__setattr__("att%d" %(2-i), att)
 
         if self.has_gates:
-            self.output_gate = Gate(2048, self.attention_depth)
+            ngates = self.attention_depth
+            if self.attention_output == 'all':
+                ngates += 1
 
+            self.output_gate = Gate(2048, ngates, gate_depth=1)
         # self.finetune(nlabels)
 
     def get_classifier_params(self):
@@ -57,9 +62,14 @@ class WideResNetAttention(WideResNet):
         else:
             reg_loss = None
 
-        low_level_output = AttentionModule.aggregate(outputs, gates)
-        high_level_output = F.log_softmax(self.linear(x), dim=1)
-        return (low_level_output + high_level_output) / 2, reg_loss
+        if self.attention_output == 'all':
+            outputs.append(self.linear(x).view(x.size(0), 1, -1))
+            ret = AttentionModule.aggregate(outputs, gates, self.attention_type)
+        elif self.attention_output == '50':
+            ret = (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.linear(x), dim=1)) / 2.
+        else:
+            raise ValueError(self.attention_output)
+        return ret, reg_loss
 
 if __name__ == '__main__':
     import time

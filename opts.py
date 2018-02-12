@@ -24,6 +24,8 @@ parser.add_argument("--ngpu", type=int, default=1, help="Number of gpus to use")
 # Attention specific
 parser.add_argument("--attention_depth", "-d", type=int, default=0, help="Attention depth")
 parser.add_argument("--attention_width", "-w", type=int, default=0, help="Attention width")
+parser.add_argument("--attention_output", "-o", type=str, default='all', help="Attention to pay at the outputs")
+parser.add_argument("--attention_type", "-t", type=str, default='sigmoid', help="Attention function")
 parser.add_argument('--reg_weight', '-r', type=float, default=0., help="Weight to regularize attention masks.")
 parser.add_argument("--has_gates", "-g", action="store_true", help="Whether to add gating functions.")
 

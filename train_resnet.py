@@ -17,7 +17,7 @@ __date__ = "10/01/2018"
 
 def main(args):
     harakiri = Harakiri()
-    harakiri.set_max_plateau(15)
+    harakiri.set_max_plateau(20)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -57,7 +57,7 @@ def main(args):
     else:
         from models.wide_resnet_attention import WideResNetAttention
         model = WideResNetAttention(args.nlabels, args.attention_depth, args.attention_width, args.has_gates,
-                                  args.reg_weight).finetune(args.nlabels)
+                                  args.reg_weight, attention_output=args.attention_output, attention_type=args.attention_type).finetune(args.nlabels)
 
     # if args.load != "":
     #     net.load_state_dict(torch.load(args.load), strict=False)
