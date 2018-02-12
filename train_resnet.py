@@ -17,7 +17,7 @@ __date__ = "10/01/2018"
 
 def main(args):
     harakiri = Harakiri()
-    harakiri.set_max_plateau(20)
+    harakiri.set_max_plateau(30)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
