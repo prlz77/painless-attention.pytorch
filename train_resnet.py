@@ -152,11 +152,11 @@ def main(args):
     best_accuracy = 0
     counter = 0
     for epoch in range(args.epochs):
+        train()
+        val()
         if args.tencrop:
             val_tencrop()
         print(state['val_accuracy_tencrop'])
-        train()
-        val()
         # harakiri.update(epoch, state['val_accuracy'])
         if state['val_accuracy'] > best_accuracy:
             counter = 0
