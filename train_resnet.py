@@ -156,7 +156,6 @@ def main(args):
         val()
         if args.tencrop:
             val_tencrop()
-        print(state['val_accuracy_tencrop'])
         # harakiri.update(epoch, state['val_accuracy'])
         if state['val_accuracy'] > best_accuracy:
             counter = 0

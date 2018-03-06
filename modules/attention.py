@@ -172,8 +172,8 @@ class AttentionModule(torch.nn.Module):
         if self.self_attention:
             scores = self.score(x).view(b, self.nheads, 1, h*w)
             scores = (scores * att_mask).sum(3)
-            scores = F.sigmoid(F.tanh(scores))
-            return (output * scores).sum(1, keepdim=True) / (1e-6 + scores.sum(1, keepdim=True))
+            scores = F.softmax(F.tanh(scores), 1)
+            return (output * scores).sum(1, keepdim=True)
         else:
             return output
 
