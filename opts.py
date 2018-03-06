@@ -16,6 +16,8 @@ parser.add_argument("--test_only", action="store_true", help="Perform test step 
 # I/O
 parser.add_argument("--log_path", type=str, default="./logs", help="Path to save logs")
 parser.add_argument("--save", action="store_true", help="Whether to save model.")
+parser.add_argument("--size", type=int, default=256, help="original image size")
+parser.add_argument("--tencrop", action='store_true', help="whether to perform ten crop")
 
 # Performance
 parser.add_argument("--num_workers", type=int, default=3, help="Number of prefetching threads")

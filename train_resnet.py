@@ -21,6 +21,7 @@ def main(args):
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
+    val_accuracy_tencrop_meter = Meter()
     log = JsonLogger(args.log_path, rand_folder=True)
     log.update(args.__dict__)
     state = args.__dict__
@@ -33,8 +34,8 @@ def main(args):
 
     train_dataset = ImageList(args.root_folder, args.train_listfile,
                         transform=transforms.Compose([
-                            transforms.Resize(256),
-                            transforms.RandomCrop(224),
+                            transforms.Resize(args.size),
+                            transforms.RandomCrop(args.size * 0.875),
                             transforms.RandomHorizontalFlip(),
                             transforms.ToTensor(),
                             transforms.Normalize(imagenet_mean, imagenet_std)
@@ -43,13 +44,24 @@ def main(args):
                                                shuffle=True, pin_memory=False, num_workers=args.num_workers)
     val_dataset = ImageList(args.root_folder, args.val_listfile,
                         transform=transforms.Compose([
-                            transforms.Resize(256),
-                            transforms.CenterCrop(224),
+                            transforms.Resize(args.size),
+                            transforms.CenterCrop(args.size*0.875),
                             transforms.ToTensor(),
                             transforms.Normalize(imagenet_mean, imagenet_std)
                         ]))
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                              pin_memory=False, num_workers=args.num_workers)
+
+    if args.tencrop:
+        normalize = transforms.Normalize(imagenet_mean, imagenet_std)
+        val_dataset_tencrop = ImageList(args.root_folder, args.val_listfile,
+                                transform=transforms.Compose([
+                                    transforms.Resize(args.size),
+                                    transforms.TenCrop(args.size*0.875),
+                                    transforms.Lambda(lambda crops: torch.stack([normalize(transforms.ToTensor()(crop)) for crop in crops])),
+                                ]))
+        val_loader_tencrop = torch.utils.data.DataLoader(val_dataset_tencrop, batch_size=args.batch_size, shuffle=False,
+                                                 pin_memory=False, num_workers=args.num_workers)
 
     if args.attention_depth == 0:
         from models.wide_resnet import WideResNet
@@ -118,9 +130,31 @@ def main(args):
         val_loss_meter.reset()
         val_accuracy_meter.reset()
 
+    def val_tencrop():
+        """
+
+        """
+        model.eval()
+        for data, label in val_loader_tencrop:
+            bs, crops, channels, h, w = data.size()
+            data, label = torch.autograd.Variable(data, volatile=True).cuda(async=True), \
+                          torch.autograd.Variable(label, volatile=True).cuda()
+            if args.attention_depth > 0:
+                output, loss = model(data.view(-1, channels, h, w))
+            else:
+                output = model(data.view(-1, channels, h, w))
+            preds = output.view(bs, crops, -1).mean(1).max(1)[1]
+
+            val_accuracy_tencrop_meter.update((preds == label).float().sum().data[0], data.size(0))
+        state['val_accuracy_tencrop'] = val_accuracy_tencrop_meter.mean()
+        val_accuracy_tencrop_meter.reset()
+
     best_accuracy = 0
     counter = 0
     for epoch in range(args.epochs):
+        if args.tencrop:
+            val_tencrop()
+        print(state['val_accuracy_tencrop'])
         train()
         val()
         # harakiri.update(epoch, state['val_accuracy'])
