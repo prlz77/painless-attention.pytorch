@@ -61,10 +61,10 @@ class WideResNetAttention(torch.nn.Module):
         self.attention_type = attention_type
         self.attention_layers = [2 - i for i in range(self.attention_depth)]
         print("Attention after groups %s" %(str(self.attention_layers)))
-        for i in range(attention_depth):
-            att = AttentionModule(widths[self.attention_layers[i]], num_classes, attention_width, reg_w)
-            self.__setattr__("att%d" %(self.attention_layers[i]), att)
-            self.__setattr__("pre_bn%d" %(self.attention_layers[i]), torch.nn.BatchNorm2d(widths[self.attention_layers[i]]))
+        for i in self.attention_layers:
+            att = AttentionModule(widths[i], num_classes, attention_width, reg_w)
+            self.__setattr__("att%d" %(i), att)
+            self.__setattr__("pre_bn%d" %(i), torch.nn.BatchNorm2d(widths[i]))
         ngates = self.attention_depth
         if self.attention_output == 'all':
             ngates += 1
@@ -103,7 +103,7 @@ class WideResNetAttention(torch.nn.Module):
             outputs.append(self.classifier(o).view(o.size(0), 1, -1))
             ret = AttentionModule.aggregate(outputs, gates, self.attention_type)
         elif self.attention_output == '50':
-            ret = (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.classifier(x), dim=1)) / 2.
+            ret = (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.classifier(o), dim=1)) / 2.
         else:
             raise ValueError(self.attention_output)
         return ret, reg_loss
