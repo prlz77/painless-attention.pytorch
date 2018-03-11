@@ -132,10 +132,10 @@ def main():
             optimizer.zero_grad()
             t = time.time()
             preds = model(images)
-            state["training_time"] += time.time() - t
             loss = F.cross_entropy(preds, labels)
             loss.backward()
             optimizer.step()
+            state["training_time"] += time.time() - t
             train_loss_meter.update(loss.data[0], labels.size(0))
         state["train_loss"] = train_loss_meter.mean()
 

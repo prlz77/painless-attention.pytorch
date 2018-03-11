@@ -8,7 +8,7 @@
 
 import argparse
 import os
-import numpy as np
+import time
 import torch
 from torch.optim import SGD
 from torch.utils.data import DataLoader
@@ -80,6 +80,7 @@ def main():
     log.update(state)
     state['exp_dir'] = os.path.dirname(log.path)
     state['start_lr'] = state['lr']
+    state["training_time"] = 0
 
     print('parsed options:', vars(opt))
     num_classes = 10 if opt.dataset == 'CIFAR10' else 100
@@ -105,6 +106,7 @@ def main():
     if opt.resume != '':
         state_dict = torch.load(opt.resume)
         state["epoch"] = state_dict['epoch']
+        state["training_time"] = state_dict["training_time"]
         optimizer.load_state_dict(state_dict['optimizer'])
         model.load_state_dict(state_dict["state_dict"])
 
@@ -124,10 +126,12 @@ def main():
         for images, labels in train_loader:
             images, labels = Variable(images, requires_grad=False).cuda(), Variable(labels, requires_grad=False).cuda()
             optimizer.zero_grad()
+            t = time.time()
             preds = model(images)
             loss = F.cross_entropy(preds, labels)
             loss.backward()
             optimizer.step()
+            state["training_time"] = time.time() - t
             train_loss_meter.update(loss.data[0], labels.size(0))
         state["train_loss"] = train_loss_meter.mean()
 
@@ -152,6 +156,7 @@ def main():
         eval()
         torch.save(dict(state_dict=model.state_dict(),
                         optimizer=optimizer.state_dict(),
+                        training_time=state["training_time"],
                         epoch=epoch + 1),
                    open(os.path.join(state["exp_dir"], 'model.pt7'), 'wb'))
         log.update(state)

@@ -142,10 +142,10 @@ def main():
             else:
                 loss = 0
                 output = F.log_softmax(model(images))
-            state["training_time"] += time.time() - t
             loss += F.nll_loss(output, labels)
             loss.backward()
             optimizer.step()
+            state["training_time"] += time.time() - t
             train_loss_meter.update(loss.data[0], labels.size(0))
         state["train_loss"] = train_loss_meter.mean()
 
