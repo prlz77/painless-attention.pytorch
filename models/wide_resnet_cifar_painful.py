@@ -48,6 +48,7 @@ class PainfulAttention(torch.nn.Module):
 
     def forward(self, local_feat, global_feat):
         local_feat = F.relu(self.bn(local_feat), True)
+        local_feat = F.dropout2d(local_feat, 0.5, self.training, True)
         bs, ch, h, w = local_feat.size()
         global_feat = global_feat.resize(bs, global_feat.size(1), 1, 1)
         global_feat = global_feat.expand(bs, global_feat.size(1), h, w)
@@ -107,8 +108,10 @@ class WideResNetAttention(torch.nn.Module):
         global_features = F.relu(self.extra_bn_1(group2))
         global_features = F.max_pool2d(global_features, 2, 2, 0)
         global_features = F.relu(self.extra_bn_2(global_features))
+        global_features = F.dropout2d(global_features, 0.4, training=self.training)
         global_features = F.max_pool2d(global_features, 4, 4, 0)
         global_features = global_features.view(global_features.size(0), -1)
+        global_features = F.dropout(global_features, training=self.training)
         global_features = self.global_features(global_features)
 
         final_features = []
