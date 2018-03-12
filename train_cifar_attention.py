@@ -25,6 +25,7 @@ parser.add_argument('--dataroot', default='.', type=str)
 parser.add_argument('--dtype', default='float', type=str)
 parser.add_argument('--groups', default=1, type=int)
 parser.add_argument('--nthread', default=4, type=int)
+parser.add_argument('--dropout', type=float, default=0)
 
 # Attention
 parser.add_argument("--attention_depth", default=0, type=int, help="Painless attention depth")
@@ -96,7 +97,7 @@ def main():
         model = WideResNet(opt.depth, opt.width, num_classes).cuda()
     else:
         from models.wide_resnet_cifar_painless import WideResNetAttention
-        model = WideResNetAttention(opt.depth, opt.width, num_classes, opt.attention_depth, opt.attention_width,
+        model = WideResNetAttention(opt.depth, opt.width, num_classes, opt.dropout, opt.attention_depth, opt.attention_width,
                                     opt.reg_w, opt.attention_output, opt.attention_type).cuda()
 
     if opt.ngpu > 1:
