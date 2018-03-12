@@ -83,7 +83,7 @@ class WideResNetAttention(torch.nn.Module):
         return loss / self.attention_depth
 
     def forward(self, x):
-        x = F.relu(self.bn_0(self.conv0(x)), True)
+        x = F.relu(self.bn0(self.conv0(x)), True)
         group0 = F.relu(self.bn_g0(self.group_0(x)), True)
         group1 = F.relu(self.bn_g1(self.group_1(x)), True)
         group2 = F.relu(self.bn_g2(self.group_2(x)), True)
