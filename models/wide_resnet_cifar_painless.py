@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from modules.attention import AttentionModule, Gate
 
 class Block(torch.nn.Module):
-    def __init__(self, ni, no, stride, dropout=0.):
+    def __init__(self, ni, no, stride, dropout):
         super(Block, self).__init__()
         self.dropout = dropout
         self.conv0 = torch.nn.Conv2d(ni, no, 3, stride=stride, padding=1, bias=False)
@@ -19,7 +19,7 @@ class Block(torch.nn.Module):
     def forward(self, x):
         y = self.conv0(x)
         o2 = F.relu(self.bn1(y), inplace=True)
-        if not self.reduce:
+        if self.dropout > 0:
             o2 = F.dropout2d(o2, self.dropout, training=self.training, inplace=True)
         z = self.conv1(o2)
         if self.reduce:
@@ -32,7 +32,7 @@ class Group(torch.nn.Module):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout))
+            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout if i == 0 else 0))
 
     def forward(self, x):
         for i in range(self.n):
