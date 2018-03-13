@@ -93,7 +93,7 @@ class WideResNetAttention(torch.nn.Module):
         group1 = self.group_1(group0)
         group2 = F.relu(self.bn_g2(self.group_2(group1)), True)
 
-        groups = [group1.block_0.block_input, group2.block_0.block_input, group2]
+        groups = [self.group_1.block_0.block_input, self.group_2.block_0.block_input, group2]
         attention_outputs = []
 
         for i in self.attention_layers:
