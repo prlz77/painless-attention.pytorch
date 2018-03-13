@@ -32,7 +32,7 @@ class Group(torch.nn.Module):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout if i == 0 else 0))
+            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout if i > 0 else 0))
 
     def forward(self, x):
         for i in range(self.n):
