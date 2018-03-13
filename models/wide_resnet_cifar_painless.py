@@ -3,21 +3,28 @@ import torch.nn.functional as F
 from modules.attention import AttentionModule, Gate
 
 class Block(torch.nn.Module):
-    def __init__(self, ni, no, stride, dropout):
+    def __init__(self, ni, no, stride, dropout, save_input=False):
         super(Block, self).__init__()
         self.dropout = dropout
         self.conv0 = torch.nn.Conv2d(ni, no, 3, stride=stride, padding=1, bias=False)
         torch.nn.init.kaiming_normal(self.conv0.weight.data)
-        self.bn1 = torch.nn.BatchNorm2d(no)
+        self.bn0 = torch.nn.BatchNorm2d(ni)
         self.conv1 = torch.nn.Conv2d(no, no, 3, stride=1, padding=1, bias=False)
+        self.bn1 = torch.nn.BatchNorm2d(no)
         torch.nn.init.kaiming_normal(self.conv1.weight.data)
         self.reduce = ni != no
+        self.save_input = save_input
         if self.reduce:
             self.conv_reduce = torch.nn.Conv2d(ni, no, 1, stride=stride, bias=False)
             torch.nn.init.kaiming_normal(self.conv_reduce.weight.data)
 
     def forward(self, x):
-        y = self.conv0(x)
+        if self.save_input:
+            self.block_input = F.relu(self.bn0(x), True)
+            y = self.conv0(self.block_input)
+        else:
+            y = self.conv0(F.relu(self.bn0(x), True))
+
         o2 = F.relu(self.bn1(y), inplace=True)
         if self.dropout > 0:
             o2 = F.dropout2d(o2, self.dropout, training=self.training, inplace=True)
@@ -32,7 +39,7 @@ class Group(torch.nn.Module):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout if i > 0 else 0))
+            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout, save_input=(i==0)))
 
     def forward(self, x):
         for i in range(self.n):
@@ -51,9 +58,7 @@ class WideResNetAttention(torch.nn.Module):
         self.bn0 = torch.nn.BatchNorm2d(16)
         torch.nn.init.kaiming_normal(self.conv0.weight.data)
         self.group_0 = Group(16, widths[0], self.n, 1, dropout)
-        self.bn_g0 = torch.nn.BatchNorm2d(widths[0])
         self.group_1 = Group(widths[0], widths[1], self.n, 2, dropout)
-        self.bn_g1 = torch.nn.BatchNorm2d(widths[1])
         self.group_2 = Group(widths[1], widths[2], self.n, 2, dropout)
         self.bn_g2 = torch.nn.BatchNorm2d(widths[2])
         self.classifier = torch.nn.Linear(widths[2], self.num_classes)
@@ -84,11 +89,11 @@ class WideResNetAttention(torch.nn.Module):
 
     def forward(self, x):
         x = F.relu(self.bn0(self.conv0(x)), True)
-        group0 = F.relu(self.bn_g0(self.group_0(x)), True)
-        group1 = F.relu(self.bn_g1(self.group_1(group0)), True)
-        group2 = F.relu(self.bn_g2(self.group_2(group1)), True)
+        group0 = self.group_0(x)
+        group1 = self.group_1(group0)
+        group2 = F.relu(self.bn_g2(self.group_2(group1), True))
 
-        groups = [group0, group1, group2]
+        groups = [group1.block_0.block_input, group2.block_0.block_input, group2]
         attention_outputs = []
 
         for i in self.attention_layers:
@@ -99,7 +104,7 @@ class WideResNetAttention(torch.nn.Module):
 
         gates = self.output_gate(o)
 
-        if self.reg_w > 0:
+        if self.training and self.reg_w > 0:
             reg_loss = self.reg_loss()
         else:
             reg_loss = None

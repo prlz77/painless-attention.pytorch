@@ -105,7 +105,7 @@ def main():
 
     def create_optimizer(opt, lr):
         print('creating optimizer with lr = ', lr)
-        return SGD(model.parameters(), lr, 0.9, weight_decay=opt.weight_decay)
+        return SGD(model.parameters(), lr, 0.9, weight_decay=opt.weight_decay, nesterov=True)
 
     optimizer = create_optimizer(opt, opt.lr)
 
