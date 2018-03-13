@@ -42,7 +42,7 @@ class Gate(torch.nn.Module):
         if self.gate_depth == 1:
             return F.tanh(self.bn(self.gates(x)))
         else:
-            return F.tanh(self.bn(self.gates(self.pre_bn(F.relu(self.pre_gates(x))))))
+            return F.tanh(self.bn(self.gates(F.relu(self.pre_bn(self.pre_gates(x))))))
 
 
 class AttentionHead(torch.nn.Module):
