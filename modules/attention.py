@@ -87,8 +87,9 @@ class AttentionHead(torch.nn.Module):
 
         """
         b, c, h, w = x.size()
-        self.att_mask = F.softmax(self.conv(x).view(b, self.nheads, w * h), 2).view(b, self.nheads, h, w)
-        return self.att_mask
+        att_mask = F.softmax(self.conv(x).view(b, self.nheads, w * h), 2).view(b, self.nheads, h, w)
+        self.att_mask = F.avg_pool2d(att_mask, 2, 2)
+        return att_mask
 
 class OutHead(torch.nn.Module):
     """ Attention Heads

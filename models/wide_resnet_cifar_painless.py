@@ -19,12 +19,12 @@ class Block(torch.nn.Module):
             torch.nn.init.kaiming_normal(self.conv_reduce.weight.data)
 
     def forward(self, x):
-        if self.save_input:
-            self.block_input = F.relu(self.bn0(x), True)
-            y = self.conv0(self.block_input)
-        else:
-            y = self.conv0(F.relu(self.bn0(x), True))
+        block_input = F.relu(self.bn0(x), True)
 
+        if self.save_input:
+            self.block_input = block_input
+
+        y = self.conv0(block_input)
         o2 = F.relu(self.bn1(y), inplace=True)
         if self.dropout > 0:
             o2 = F.dropout2d(o2, self.dropout, training=self.training, inplace=True)
