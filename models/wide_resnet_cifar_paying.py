@@ -34,7 +34,7 @@ class Block(torch.nn.Module):
         o2 = F.relu(self.bn1(y), inplace=True)
         z = self.conv1(o2)
         if self.reduce:
-            return z + self.conv_reduce(o1)
+            return z + self.conv_reduce(x)
         else:
             return z + x
 
