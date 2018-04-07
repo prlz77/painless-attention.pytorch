@@ -5,7 +5,8 @@ Uses [1] to train a Wide Residual Model on Cifar10 and Cifar 100.
 [1] Jetley, Saumya, et al. "Learn to pay attention." ICLR2018.
 """
 
-__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__authors__ = ["Pau Rodríguez López (prlz77), ISELAB, CVC-UAB",
+               "Guillem Cucurull, ISELAB, CVC-UAB"]
 __email__ = "pau.rodri1 at gmail.com"
 
 import argparse

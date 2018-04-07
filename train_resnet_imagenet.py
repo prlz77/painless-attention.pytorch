@@ -11,7 +11,8 @@ from prlz77_utils.loggers.json_logger import JsonLogger
 from prlz77_utils.monitors.meter import Meter
 from prlz77_utils.monitors.harakiri import Harakiri
 
-__author__ = "prlz77, ISELAB, CVC-UAB"
+__authors__ = ["Pau Rodríguez López (prlz77), ISELAB, CVC-UAB",
+               "Guillem Cucurull, ISELAB, CVC-UAB"]
 __date__ = "10/01/2018"
 
 

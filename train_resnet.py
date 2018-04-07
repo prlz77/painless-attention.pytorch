@@ -3,7 +3,8 @@
 Trains a Wide Attention Residual Model (WARN) on an Imagenet-Like dataset.
 """
 
-__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__authors__ = ["Pau Rodríguez López, ISELAB, CVC-UAB",
+               "Guillem Cucurull, ISELAB, CVC-UAB"]
 __email__ = "pau.rodri1 at gmail.com"
 
 import os
