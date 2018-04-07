@@ -4,7 +4,13 @@ import torch.nn.functional as F
 
 
 class STN(nn.Module):
+    """
+    Spatial Transformer network module
+    """
     def __init__(self):
+        """
+        Constructor
+        """
         super(STN, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, kernel_size=7, bias=False)  # 40 -> 34
         self.bn1 = nn.BatchNorm2d(8)
@@ -21,6 +27,14 @@ class STN(nn.Module):
         self.fc2.bias.data = torch.FloatTensor([1, 0, 0, 0, 1, 0])
 
     def forward(self, x):
+        """ Pytorch forward function
+
+        Args:
+            x: input image Variable
+
+        Returns: transformed input
+
+        """
         theta = self.bn1(F.relu(self.pool1(self.conv1(x))))
         theta = self.bn2(F.relu(self.pool2(self.conv2(theta))))
         theta = self.bn3(F.relu(self.conv3(theta)))

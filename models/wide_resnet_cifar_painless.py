@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
+
 from modules.attention import AttentionModule, Gate
+
 
 class Block(torch.nn.Module):
     def __init__(self, ni, no, stride, dropout, save_input=False):
@@ -34,21 +36,24 @@ class Block(torch.nn.Module):
         else:
             return z + x
 
+
 class Group(torch.nn.Module):
     def __init__(self, ni, no, n, stride, dropout):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout, save_input=(i==0)))
+            self.__setattr__("block_%d" % i,
+                             Block(ni if i == 0 else no, no, stride if i == 0 else 1, dropout, save_input=(i == 0)))
 
     def forward(self, x):
         for i in range(self.n):
-            x = self.__getattr__("block_%d" %i)(x)
+            x = self.__getattr__("block_%d" % i)(x)
         return x
 
 
 class WideResNetAttention(torch.nn.Module):
-    def __init__(self, depth, width, num_classes, dropout, attention_depth, attention_width, reg_w=0, attention_output="all", attention_type="softmax"):
+    def __init__(self, depth, width, num_classes, dropout, attention_depth, attention_width, reg_w=0,
+                 attention_output="all", attention_type="softmax"):
         super(WideResNetAttention, self).__init__()
         assert (depth - 4) % 6 == 0, 'depth should be 6n+4'
         self.n = (depth - 4) // 6
@@ -70,10 +75,10 @@ class WideResNetAttention(torch.nn.Module):
         self.attention_type = attention_type
 
         self.attention_layers = [2 - i for i in range(self.attention_depth)]
-        print("Attention after groups %s" %(str(self.attention_layers)))
+        print("Attention after groups %s" % (str(self.attention_layers)))
         for i in self.attention_layers:
             att = AttentionModule(widths[i], num_classes, attention_width, reg_w)
-            self.__setattr__("att%d" %(i), att)
+            self.__setattr__("att%d" % (i), att)
 
         ngates = self.attention_depth
         if self.attention_output == 'all':
@@ -97,7 +102,7 @@ class WideResNetAttention(torch.nn.Module):
         attention_outputs = []
 
         for i in self.attention_layers:
-            attention_outputs.append(self.__getattr__("att%d" %i)(groups[i]))
+            attention_outputs.append(self.__getattr__("att%d" % i)(groups[i]))
 
         o = F.avg_pool2d(group2, 8, 1, 0)
         o = o.view(o.size(0), -1)
@@ -113,9 +118,8 @@ class WideResNetAttention(torch.nn.Module):
             attention_outputs.append(self.classifier(o).view(o.size(0), 1, -1))
             ret = AttentionModule.aggregate(attention_outputs, gates, self.attention_type)
         elif self.attention_output == '50':
-            ret = (AttentionModule.aggregate(attention_outputs, gates, self.attention_type) + F.log_softmax(self.classifier(o), dim=1)) / 2.
+            ret = (AttentionModule.aggregate(attention_outputs, gates, self.attention_type) + F.log_softmax(
+                self.classifier(o), dim=1)) / 2.
         else:
             raise ValueError(self.attention_output)
         return ret, reg_loss
-
-

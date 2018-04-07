@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Simple baseline CNN to train on MNIST
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -5,9 +13,15 @@ __author__ = "prlz77, ISELAB, CVC-UAB"
 __date__ = "10/01/2018"
 
 
-class Baseline(nn.Module):
+class MnistBaseline(nn.Module):
+    """
+    A simple 5conv 2fc CNN
+    """
     def __init__(self):
-        super(Baseline, self).__init__()
+        """
+        Constructor
+        """
+        super(MnistBaseline, self).__init__()
         self.bn1 = nn.BatchNorm2d(1)
         self.conv1 = nn.Conv2d(1, 32, 5, bias=False)  # 40 -> 18
         nn.init.kaiming_normal(self.conv1.weight.data)
@@ -31,6 +45,14 @@ class Baseline(nn.Module):
         nn.init.kaiming_normal(self.fc2.weight.data)
 
     def forward(self, x):
+        """ Pytorch forward function
+
+        Args:
+            x: input image
+
+        Returns: log probabilites
+
+        """
         x = self.bn1(x)
         x = self.bn2(F.relu(F.max_pool2d(self.conv1(x), 2)))
         x = self.bn3(F.relu(F.max_pool2d(self.conv2(x), 2)))

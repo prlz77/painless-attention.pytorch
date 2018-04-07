@@ -26,13 +26,10 @@ cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='Wide Residual Networks')
 # Model options
-parser.add_argument('--model', default='resnet', type=str)
 parser.add_argument('--depth', default=16, type=int)
 parser.add_argument('--width', default=1, type=float)
 parser.add_argument('--dataset', default='CIFAR10', type=str)
 parser.add_argument('--dataroot', default='.', type=str)
-parser.add_argument('--dtype', default='float', type=str)
-parser.add_argument('--groups', default=1, type=int)
 parser.add_argument('--nthread', default=4, type=int)
 
 # Training options

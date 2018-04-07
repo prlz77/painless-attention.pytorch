@@ -1,29 +1,36 @@
+# -*- coding: utf-8 -*-
+"""
+Trains a Wide Residual Attention Model on Cifar10 and Cifar 100.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import argparse
 import os
+import time
+
+import numpy as np
 import torch
+import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
+import torchvision.transforms as T
+from torch.autograd import Variable
 from torch.optim import SGD
 from torch.utils.data import DataLoader
 from torchvision import datasets
-import torchvision.transforms as T
-from torch.autograd import Variable
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
-import numpy as np
-from prlz77_utils.monitors import meter
+
 from prlz77_utils.loggers.json_logger import JsonLogger
-import time
+from prlz77_utils.monitors import meter
 
 cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='Wide Residual Networks')
 # Model options
-parser.add_argument('--model', default='resnet', type=str)
 parser.add_argument('--depth', default=16, type=int)
 parser.add_argument('--width', default=1, type=float)
 parser.add_argument('--dataset', default='CIFAR10', type=str)
 parser.add_argument('--dataroot', default='.', type=str)
-parser.add_argument('--dtype', default='float', type=str)
-parser.add_argument('--groups', default=1, type=int)
 parser.add_argument('--nthread', default=4, type=int)
 parser.add_argument('--dropout', type=float, default=0)
 
@@ -97,7 +104,8 @@ def main():
         model = WideResNet(opt.depth, opt.width, num_classes).cuda()
     else:
         from models.wide_resnet_cifar_painless import WideResNetAttention
-        model = WideResNetAttention(opt.depth, opt.width, num_classes, opt.dropout, opt.attention_depth, opt.attention_width,
+        model = WideResNetAttention(opt.depth, opt.width, num_classes, opt.dropout, opt.attention_depth,
+                                    opt.attention_width,
                                     opt.reg_w, opt.attention_output, opt.attention_type).cuda()
 
     if opt.ngpu > 1:

@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+Uses [1] to train a Wide Residual Model on Cifar10 and Cifar 100.
+
+[1] Jetley, Saumya, et al. "Learn to pay attention." ICLR2018.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import argparse
 import os
 
@@ -7,20 +17,14 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 
 from datasets.npyloader import NpyDataset
-from models.attention_net import AttentionNet
-from models.baseline import Baseline
+from models.mnist_attention import AttentionNet
+from models.mnist_baseline import MnistBaseline
 from modules.stn import STN
 from prlz77_utils.loggers.json_logger import JsonLogger
 from prlz77_utils.monitors.meter import Meter
-from prlz77_utils.monitors.harakiri import Harakiri
-
-__author__ = "prlz77, ISELAB, CVC-UAB"
-__date__ = "10/01/2018"
 
 
 def main(args):
-    harakiri = Harakiri()
-    #harakiri.set_max_plateau(20)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -61,13 +65,14 @@ def main(args):
         raise ValueError("#train distractors not >= 0")
 
     if args.model == "baseline":
-        model = Baseline().cuda()
+        model = MnistBaseline().cuda()
     elif args.model == 'stn':
         stn = STN().cuda()
-        baseline = Baseline().cuda()
+        baseline = MnistBaseline().cuda()
         model = torch.nn.Sequential(stn, baseline)
     else:
-        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w, args.gate_depth, args.self_attention, args.attention_output, args.attention_type).cuda()
+        model = AttentionNet(args.att_depth, args.nheads, args.has_gates, args.reg_w, args.gate_depth,
+                             args.self_attention, args.attention_output, args.attention_type).cuda()
 
     if args.load != "":
         model.load_state_dict(torch.load(args.load), strict=False)
@@ -149,7 +154,6 @@ def main(args):
             if (epoch + 1) in args.schedule:
                 for param_group in optimizer.param_groups:
                     param_group['lr'] *= 0.1
-            harakiri.update(epoch, state['val_accuracy'])
         if args.save:
             torch.save(model.state_dict(), os.path.join(state["exp_dir"], "model.pytorch"))
 

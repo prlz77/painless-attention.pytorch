@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Trains a Wide Attention Residual Model (WARN) on an Imagenet-Like dataset.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import os
 
 import torch
@@ -9,15 +17,9 @@ from datasets.listfile import ImageList
 from opts import parser
 from prlz77_utils.loggers.json_logger import JsonLogger
 from prlz77_utils.monitors.meter import Meter
-from prlz77_utils.monitors.harakiri import Harakiri
-
-__author__ = "prlz77, ISELAB, CVC-UAB"
-__date__ = "10/01/2018"
 
 
 def main(args):
-    # harakiri = Harakiri()
-    # harakiri.set_max_plateau(30)
     train_loss_meter = Meter()
     val_loss_meter = Meter()
     val_accuracy_meter = Meter()
@@ -33,35 +35,36 @@ def main(args):
     imagenet_std = [0.229, 0.224, 0.225]
 
     train_dataset = ImageList(args.root_folder, args.train_listfile,
-                        transform=transforms.Compose([
-                            transforms.Resize(args.size),
-                            transforms.RandomCrop(args.size * 0.875),
-                            transforms.RandomHorizontalFlip(),
-                            transforms.ToTensor(),
-                            transforms.Normalize(imagenet_mean, imagenet_std)
-                        ]))
+                              transform=transforms.Compose([
+                                  transforms.Resize(args.size),
+                                  transforms.RandomCrop(args.size * 0.875),
+                                  transforms.RandomHorizontalFlip(),
+                                  transforms.ToTensor(),
+                                  transforms.Normalize(imagenet_mean, imagenet_std)
+                              ]))
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                shuffle=True, pin_memory=False, num_workers=args.num_workers)
     val_dataset = ImageList(args.root_folder, args.val_listfile,
-                        transform=transforms.Compose([
-                            transforms.Resize(args.size),
-                            transforms.CenterCrop(args.size*0.875),
-                            transforms.ToTensor(),
-                            transforms.Normalize(imagenet_mean, imagenet_std)
-                        ]))
+                            transform=transforms.Compose([
+                                transforms.Resize(args.size),
+                                transforms.CenterCrop(args.size * 0.875),
+                                transforms.ToTensor(),
+                                transforms.Normalize(imagenet_mean, imagenet_std)
+                            ]))
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                              pin_memory=False, num_workers=args.num_workers)
 
     if args.tencrop:
         normalize = transforms.Normalize(imagenet_mean, imagenet_std)
         val_dataset_tencrop = ImageList(args.root_folder, args.val_listfile,
-                                transform=transforms.Compose([
-                                    transforms.Resize(args.size),
-                                    transforms.TenCrop(args.size*0.875),
-                                    transforms.Lambda(lambda crops: torch.stack([normalize(transforms.ToTensor()(crop)) for crop in crops])),
-                                ]))
+                                        transform=transforms.Compose([
+                                            transforms.Resize(args.size),
+                                            transforms.TenCrop(args.size * 0.875),
+                                            transforms.Lambda(lambda crops: torch.stack(
+                                                [normalize(transforms.ToTensor()(crop)) for crop in crops])),
+                                        ]))
         val_loader_tencrop = torch.utils.data.DataLoader(val_dataset_tencrop, batch_size=args.batch_size, shuffle=False,
-                                                 pin_memory=False, num_workers=args.num_workers)
+                                                         pin_memory=False, num_workers=args.num_workers)
 
     if args.attention_depth == 0:
         from models.wide_resnet import WideResNet
@@ -69,11 +72,8 @@ def main(args):
     else:
         from models.wide_resnet_attention import WideResNetAttention
         model = WideResNetAttention(args.nlabels, args.attention_depth, args.attention_width, args.has_gates,
-                                  args.reg_weight, attention_output=args.attention_output, attention_type=args.attention_type).finetune(args.nlabels)
-
-    # if args.load != "":
-    #     net.load_state_dict(torch.load(args.load), strict=False)
-    #     net = net.cuda()
+                                    args.reg_weight, attention_output=args.attention_output,
+                                    attention_type=args.attention_type).finetune(args.nlabels)
 
     optimizer = optim.SGD([{'params': model.get_base_params(), 'lr': args.lr * 0.1},
                            {'params': model.get_classifier_params()}],
@@ -85,9 +85,6 @@ def main(args):
         model = model.cuda()
 
     def train():
-        """
-
-        """
         model.train()
         for data, label in train_loader:
             data, label = torch.autograd.Variable(data, requires_grad=False).cuda(async=True), \
@@ -110,9 +107,6 @@ def main(args):
         train_loss_meter.reset()
 
     def val():
-        """
-
-        """
         model.eval()
         for data, label in val_loader:
             data, label = torch.autograd.Variable(data, volatile=True).cuda(async=True), \
@@ -131,9 +125,6 @@ def main(args):
         val_accuracy_meter.reset()
 
     def val_tencrop():
-        """
-
-        """
         model.eval()
         for data, label in val_loader_tencrop:
             bs, crops, channels, h, w = data.size()
@@ -156,7 +147,6 @@ def main(args):
         val()
         if args.tencrop:
             val_tencrop()
-        # harakiri.update(epoch, state['val_accuracy'])
         if state['val_accuracy'] > best_accuracy:
             counter = 0
             best_accuracy = state['val_accuracy']
@@ -171,7 +161,6 @@ def main(args):
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.1
             state['lr'] *= 0.1
-
 
 
 if __name__ == "__main__":

@@ -1,6 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+Uses [1] to train a Wide Residual Model [2] on Cifar10 and Cifar 100. Implementation as in
+https://github.com/saumya-jetley/cd_ICLR18_ActiveAttention/blob/master/RESNET/train_attenunit_2levels.lua
+
+[1] Jetley, Saumya, et al. "Learn to pay attention." ICLR2018.
+[2] https://github.com/saumya-jetley/cd_ICLR18_ActiveAttention/blob/master/RESNET/train_attenunit_2levels.lua
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import torch
 import torch.nn.functional as F
-from modules.attention import AttentionModule, Gate
+
 
 class Block(torch.nn.Module):
     def __init__(self, ni, no, stride):
@@ -26,25 +38,26 @@ class Block(torch.nn.Module):
         else:
             return z + x
 
+
 class Group(torch.nn.Module):
     def __init__(self, ni, no, n, stride):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1))
+            self.__setattr__("block_%d" % i, Block(ni if i == 0 else no, no, stride if i == 0 else 1))
 
     def forward(self, x):
         for i in range(self.n):
-            x = self.__getattr__("block_%d" %i)(x)
+            x = self.__getattr__("block_%d" % i)(x)
         return x
 
-class PainfulAttention(torch.nn.Module):
+
+class PayAttention(torch.nn.Module):
     def __init__(self, local_ch, global_ch):
-        super(PainfulAttention, self).__init__()
+        super(PayAttention, self).__init__()
         self.conv_reduce = torch.nn.Conv2d(local_ch + global_ch, 1, 1, padding=0, bias=False)
         torch.nn.init.kaiming_normal(self.conv_reduce.weight.data)
         self.bn = torch.nn.BatchNorm2d(local_ch)
-
 
     def forward(self, local_feat, global_feat):
         local_feat = F.relu(self.bn(local_feat), True)
@@ -53,12 +66,12 @@ class PainfulAttention(torch.nn.Module):
         global_feat = global_feat.resize(bs, global_feat.size(1), 1, 1)
         global_feat = global_feat.expand(bs, global_feat.size(1), h, w)
         cat_feat = torch.cat([local_feat, global_feat], 1)
-        mask = F.softmax(self.conv_reduce(cat_feat).resize(bs, 1, h*w), dim=2)
+        mask = F.softmax(self.conv_reduce(cat_feat).resize(bs, 1, h * w), dim=2)
         return (local_feat * mask.resize(bs, 1, h, w)).sum(3).sum(2)
 
 
 class WideResNetAttention(torch.nn.Module):
-    def __init__(self, depth, width, num_classes,  attention_depth):
+    def __init__(self, depth, width, num_classes, attention_depth):
         super(WideResNetAttention, self).__init__()
         assert (depth - 4) % 6 == 0, 'depth should be 6n+4'
         self.n = (depth - 4) // 6
@@ -80,16 +93,15 @@ class WideResNetAttention(torch.nn.Module):
 
         self.attention_depth = attention_depth
         self.attention_layers = [2 - i for i in range(self.attention_depth)]
-        print("Attention after groups %s" %(str(self.attention_layers)))
+        print("Attention after groups %s" % (str(self.attention_layers)))
         for i in self.attention_layers:
-            att = PainfulAttention(widths[i], widths[-1])
-            self.__setattr__("att%d" %(i), att)
+            att = PayAttention(widths[i], widths[-1])
+            self.__setattr__("att%d" % (i), att)
 
         self.final_width = sum([widths[i] for i in self.attention_layers])
         self.final_batchnorm = torch.nn.BatchNorm2d(self.final_width)
         self.classifier = torch.nn.Linear(self.final_width, num_classes)
         torch.nn.init.kaiming_normal(self.classifier.weight.data)
-
 
     def reg_loss(self):
         loss = 0

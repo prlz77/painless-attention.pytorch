@@ -1,27 +1,30 @@
+# -*- coding: utf-8 -*-
 """
-    PyTorch training code for Wide Residual Networks:
-    http://arxiv.org/abs/1605.07146
-    The code reproduces *exactly* it's lua version:
-    https://github.com/szagoruyko/wide-residual-networks
-    2016 Sergey Zagoruyko
+Uses [1] to train a Wide Residual Model on Cifar10 and Cifar 100.
+
+[1] Jetley, Saumya, et al. "Learn to pay attention." ICLR2018.
 """
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
 
 import argparse
 import os
+import time
+
 import numpy as np
 import torch
+import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
+import torchvision.transforms as T
+from torch.autograd import Variable
 from torch.optim import SGD
 from torch.utils.data import DataLoader
 from torchvision import datasets
-import torchvision.transforms as T
-from torch.autograd import Variable
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
-from models.wide_resnet_cifar_painful import WideResNetAttention
-import numpy as np
-import time
-from prlz77_utils.monitors import meter
+
+from models.wide_resnet_cifar_paying import WideResNetAttention
 from prlz77_utils.loggers.json_logger import JsonLogger
+from prlz77_utils.monitors import meter
 
 cudnn.benchmark = True
 
@@ -45,7 +48,7 @@ parser.add_argument('--lr', default=0.1, type=float)
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--weight_decay', default=0.0005, type=float)
-parser.add_argument('--schedule', nargs='*', default=[60,120,160], type=int,
+parser.add_argument('--schedule', nargs='*', default=[60, 120, 160], type=int,
                     help='json list with epochs to drop lr on')
 parser.add_argument('--lr_decay_ratio', default=0.2, type=float)
 parser.add_argument('--resume', default='', type=str)
@@ -57,6 +60,7 @@ parser.add_argument('--save', default='', type=str,
                     help='save parameters and logs in this folder')
 parser.add_argument('--ngpu', default=1, type=int,
                     help='number of GPUs to use for training')
+
 
 def create_dataset(opt, train):
     transform = T.Compose([
@@ -73,7 +77,7 @@ def create_dataset(opt, train):
 
     ds = getattr(datasets, opt.dataset)(opt.dataroot, train=train, download=True, transform=transform)
     if train:
-        ds.train_data = np.pad(ds.train_data, ((0,0), (4,4), (4,4), (0,0)), mode='reflect')
+        ds.train_data = np.pad(ds.train_data, ((0, 0), (4, 4), (4, 4), (0, 0)), mode='reflect')
     return ds
 
 

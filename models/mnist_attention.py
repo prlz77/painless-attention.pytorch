@@ -1,19 +1,23 @@
-import torch
+# -*- coding: utf-8 -*-
+"""
+Augments ``mnist_baseline.py`` with attention.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import torch.nn as nn
 import torch.nn.functional as F
 
 from modules.attention import AttentionModule, Gate
 
-__author__ = "prlz77, ISELAB, CVC-UAB"
-__date__ = "10/01/2018"
-
-
 class AttentionNet(nn.Module):
     """
-    A simple 5conv 2fc CNN with painless attention
+    A simple 5conv 2fc CNN with attention
     """
 
-    def __init__(self, attention_depth, attention_width, has_gates=True, reg_w=0.0, gate_depth=1, self_attention=True, attention_output='all', attention_type='softmax'):
+    def __init__(self, attention_depth, attention_width, has_gates=True, reg_w=0.0, gate_depth=1, self_attention=True,
+                 attention_output='all', attention_type='softmax'):
         """
 
         Args:
@@ -129,9 +133,11 @@ class AttentionNet(nn.Module):
             outputs.append(self.fc2(x).view(x.size(0), 1, -1))
             return AttentionModule.aggregate(outputs, gates, self.attention_type)
         elif self.attention_output == '50':
-            return (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.fc2(x), dim=1)) / 2.
+            return (AttentionModule.aggregate(outputs, gates, self.attention_type) + F.log_softmax(self.fc2(x),
+                                                                                                   dim=1)) / 2.
         elif self.attention_output == 'gate':
             g = F.sigmoid(self.final_gate(x))
-            return g * AttentionModule.aggregate(outputs, gates, self.attention_type) + (1-g) * F.log_softmax(self.fc2(x), dim=1)
+            return g * AttentionModule.aggregate(outputs, gates, self.attention_type) + (1 - g) * F.log_softmax(
+                self.fc2(x), dim=1)
         else:
             raise ValueError(self.attention_output)

@@ -1,5 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+Defines a Wide Attention Residual Network (WARN) Model on Cifar10 and Cifar 100.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import torch
 import torch.nn.functional as F
+
 
 class Block(torch.nn.Module):
     def __init__(self, ni, no, stride):
@@ -25,16 +34,17 @@ class Block(torch.nn.Module):
         else:
             return z + x
 
+
 class Group(torch.nn.Module):
     def __init__(self, ni, no, n, stride):
         super(Group, self).__init__()
         self.n = n
         for i in range(n):
-            self.__setattr__("block_%d" %i, Block(ni if i == 0 else no, no, stride if i == 0 else 1))
+            self.__setattr__("block_%d" % i, Block(ni if i == 0 else no, no, stride if i == 0 else 1))
 
     def forward(self, x):
         for i in range(self.n):
-            x = self.__getattr__("block_%d" %i)(x)
+            x = self.__getattr__("block_%d" % i)(x)
         return x
 
 
@@ -63,5 +73,3 @@ class WideResNet(torch.nn.Module):
         o = o.view(o.size(0), -1)
         o = self.classifier(o)
         return o
-
-

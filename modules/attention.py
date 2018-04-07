@@ -1,15 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Plug-in modules to augment a network with attention.
+"""
+
+__author__ = "Pau Rodríguez López, ISELAB, CVC-UAB"
+__email__ = "pau.rodri1 at gmail.com"
+
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-__author__ = "prlz77, ISELAB, CVC-UAB"
-__date__ = "10/01/2018"
 
 
 class Gate(torch.nn.Module):
     """
     Attention Gate. Weights Attention output by its importance.
     """
+
     def __init__(self, in_ch, ngates=1, gate_depth=1):
         """ Constructor
 
@@ -91,6 +97,7 @@ class AttentionHead(torch.nn.Module):
         self.att_mask = F.avg_pool2d(att_mask, 2, 2)
         return att_mask
 
+
 class OutHead(torch.nn.Module):
     """ Attention Heads
 
@@ -119,6 +126,7 @@ class OutHead(torch.nn.Module):
         """
         return self.conv(x)
 
+
 class AttentionModule(torch.nn.Module):
     """ Attention Module
 
@@ -145,10 +153,9 @@ class AttentionModule(torch.nn.Module):
         self.self_attention = self_attention
 
         self.att_head = AttentionHead(in_ch, nheads)
-        self.out_head = OutHead(in_ch, nlabels*nheads)
+        self.out_head = OutHead(in_ch, nlabels * nheads)
         if self.self_attention:
             self.score = OutHead(in_ch, nheads)
-
 
     def reg_loss(self):
         """ Regularization loss
@@ -168,10 +175,10 @@ class AttentionModule(torch.nn.Module):
 
         """
         b, c, h, w = x.size()
-        att_mask = self.att_head(x).view(b, self.nheads, 1, h*w)
-        output = (self.out_head(x).view(b, self.nheads, self.nlabels, h*w) * att_mask).sum(3)
+        att_mask = self.att_head(x).view(b, self.nheads, 1, h * w)
+        output = (self.out_head(x).view(b, self.nheads, self.nlabels, h * w) * att_mask).sum(3)
         if self.self_attention:
-            scores = self.score(x).view(b, self.nheads, 1, h*w)
+            scores = self.score(x).view(b, self.nheads, 1, h * w)
             scores = (scores * att_mask).sum(3)
             scores = F.softmax(F.tanh(scores), 1)
             return (output * scores).sum(1, keepdim=True)
@@ -183,7 +190,7 @@ class AttentionModule(torch.nn.Module):
         """ Generates the final output after aggregating all the attention modules.
 
         Args:
-            last_output: network output
+            last_output: network output logits
             last_gate: gate for the network output
 
         Returns: final network prediction
